@@ -3,6 +3,33 @@
 All notable changes to GrokGauge. Versions follow [Semantic Versioning](https://semver.org/);
 dates are when the version was built.
 
+## [0.9.1] - 2026-10-08
+
+### Fixed
+- **"Grok returned an error (400)" that wouldn't clear.** GrokGauge kept one HTTP/3 connection open between
+  refreshes; on 2026-10-08 the server instance behind one such connection answered every request with 400
+  (after about 5 seconds) for roughly 14 minutes, while new connections got normal replies. Each refresh now
+  uses its own short-lived connection, and a 400, 408, 421 or 5xx reply (or a dropped connection) is retried
+  once right away on a brand-new connection. A 400 is also treated as temporary: GrokGauge keeps the last good
+  reading and retries with backoff.
+- Grok Bot's ring said "as of 5:38 PM" the next morning without saying which day. Readings from an earlier
+  day now show the date ("as of Oct 7, 5:38 PM"); the tooltip has the full date and time.
+
+### Added
+- **Bar graph history:** "Last 7 days" shows one bar per day with the highest % reached that day, tinted with the
+  level colors, weekday labels, today's bar highlighted and a small ↺ mark on the day the weekly allowance reset.
+  VoiceOver reads each bar ("Thursday, October 8: peak 21 percent, weekly reset"). The pace line is unchanged.
+- **Graph style** in Settings › Layout: Bars (default), Line (the 0.9.0 sparkline) or Area, picked from tiles that
+  each show a small drawing of the style. Applies to both graphs.
+- **Choose which history graphs appear:** "Grok history" and "Grok Bot history" toggles in Settings › Layout.
+  Turning both off hides the "Last 7 days & pace" section (its own checkbox still works too).
+- Settings › Diagnostics shows the server's own error message for errors other than 401/403
+  (sanitized: no tokens, emails, ids or paths, at most 160 characters). `--print-usage` shows it too.
+
+### Changed
+- Settings saved by 0.9.0 are migrated automatically (new options start at their defaults) and the new options sync
+  between Macs like the others.
+
 ## [0.9.0] - 2026-10-07
 
 ### Added

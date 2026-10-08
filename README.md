@@ -34,7 +34,8 @@ Features:
   **higher** of the two numbers, **both** (`G 42% · B 86%`), just one source, or only the logo tinted
   by status. Optionally add the days to reset (`10% · 5d`) or hide the logo.
 - **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
-- **History & pace.** A 7-day sparkline for each source, plus a projection: "On track (≈40% at reset)"
+- **History & pace.** A 7-day graph for each source: one bar per day with the highest % reached that day
+  (or a line or area graph, your pick), plus a projection: "On track (≈40% at reset)"
   or "At this pace you'll hit 100% by Fri 3 PM".
 - **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
@@ -66,6 +67,15 @@ Features:
   <img src="docs/popover-changed-shape-dark-demo.png" width="250" alt="The 'xAI changed something' state">
 </p>
 <p align="center"><sub>Stacked rings with the colorblind-friendly palette · one combined ring with sections hidden · what you see if xAI changes the usage reply.</sub></p>
+
+<p align="center">
+  <img src="docs/popover-graph-bars-dark-demo.png" width="250" alt="History as bars: one bar per day, today highlighted, a reset mark on the reset day">
+  &nbsp;
+  <img src="docs/popover-graph-line-dark-demo.png" width="250" alt="History as a line graph">
+  &nbsp;
+  <img src="docs/popover-graph-area-dark-demo.png" width="250" alt="History as an area graph">
+</p>
+<p align="center"><sub>Graph styles: Bars (default; ↺ marks the day the week reset) · Line · Area.</sub></p>
 
 ## Requirements
 
@@ -139,7 +149,9 @@ Everything applies immediately.
 
 - **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, history & pace,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
-  rows to reorder them (the arrow buttons and VoiceOver actions work too). Pick the ring style, and
+  rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
+  choose whether the Grok and Grok Bot graphs appear (turning both off hides the section) and pick the
+  **Graph style**: Bars (one bar per day, the default), Line, or Area. Pick the ring style, and
   choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
 - **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
   green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.
@@ -153,7 +165,8 @@ Everything applies immediately.
   (5, 15, 30 or 60 minutes) and **Launch at login**.
 - **Sync.** See [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…**
   save and load the same JSON file.
-- **Diagnostics.** For Grok and Grok Bot: status, last success, last error, and (for Grok) when the
+- **Diagnostics.** For Grok and Grok Bot: status, last success, last error (including the server's own
+  error message for HTTP errors other than 401/403, with anything token-, email- or id-like removed), and (for Grok) when the
   login expires, plus the app and macOS versions. **Copy Report** puts a plain-text summary on the
   clipboard for bug reports; it never includes tokens, emails, account ids, or file paths.
 - **About.** Version, links, and **Check for updates daily** (on by default). When a newer release is
@@ -212,7 +225,7 @@ already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
 
 - **Settings sync** writes only `GrokGauge/settings.json` in the folder you choose, containing
   preferences only (no tokens, emails, ids, usage, or history). Nothing is synced until you pick a folder.
-- **History** for the sparklines stays on your Mac in
+- **History** for the graphs stays on your Mac in
   `~/Library/Application Support/GrokGauge/history.json`: timestamps and percents only, pruned after
   8 days, never synced or sent anywhere.
 - **Update check** (optional, daily) asks GitHub's public API for the latest
@@ -242,6 +255,9 @@ GrokGauge until it's updated.
   **"Inferred (none reported)"**.
 - If the reply is JSON but no longer has the expected shape (no `config`, no current period), GrokGauge
   shows **"xAI changed something"** and a dash instead of a misleading 0%, and keeps retrying.
+- Each refresh opens its own connection. A 400, 408, 421 or 5xx reply, or a dropped connection, is retried
+  once right away on a new connection (a stuck server instance can't keep GrokGauge on an error), and then
+  with backoff like network errors.
 - Network errors are retried with exponential backoff (30 s, 1 min, 2 min, … up to 15 min). After your
   Mac wakes or switches networks, GrokGauge waits a few seconds before refreshing and retries quietly
   for a short grace period, so you don't see "You're offline" flash on wake.
@@ -253,7 +269,7 @@ The Grok Bot app checks your weekly usage with its own server and caches the res
 dropdown, and on every Grok refresh. That means:
 
 - The Grok Bot number is **as fresh as Grok Bot's last check**. The ring shows "as of 4:28 PM" so
-  you know how old it is. Grok Bot updates the cache on its own schedule, and only while it's
+  you know how old it is (with the date, "as of Oct 7, 5:38 PM", when the reading is from an earlier day). Grok Bot updates the cache on its own schedule, and only while it's
   running. Opening Grok Bot's *Usage & Billing* screen is a quick way to get a fresh number.
 - If the cached reading has expired (Grok Bot keeps it for about a day) or its week has already
   reset, the ring goes gray and says **"Open Grok Bot to update."** If Grok Bot is signed out or
