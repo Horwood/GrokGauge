@@ -1,7 +1,9 @@
 # Mirror of github.com/stevencombs/homebrew-tap/blob/main/Casks/grokgauge.rb (keep in sync).
 cask "grokgauge" do
-  version "0.3.0"
-  sha256 "f2a1ce893646ac18413f234ddbfb4f9e522691d278f42b61dd2caebc76a6c687"
+  version "0.9.0"
+  # PLACEHOLDER: replace with the sha256 of GrokGauge-0.9.0.zip once the v0.9.0 release is published
+  # (the tap still serves 0.3.0 with its real checksum until then).
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/stevencombs/GrokGauge/releases/download/v#{version}/GrokGauge-#{version}.zip"
   name "GrokGauge"
@@ -27,7 +29,10 @@ cask "grokgauge" do
 
   uninstall quit: "com.retrocombs.GrokGauge"
 
-  zap trash: "~/Library/Preferences/com.retrocombs.GrokGauge.plist"
+  zap trash: [
+    "~/Library/Application Support/GrokGauge",
+    "~/Library/Preferences/com.retrocombs.GrokGauge.plist",
+  ]
 
   caveats <<~EOS
     GrokGauge is ad-hoc signed, not notarized by Apple. This cask removed the

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/menubar-demo.png" width="480" alt="GrokGauge in the menu bar: the higher of the two percents (86%), both percents (G 42% · B 86%), and a red 95%">
+  <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (86%), both percents (G 42% · B 86%), percent with days to reset (86% · 3d), the logo alone tinted orange, and a red 95%">
 </p>
 
 > **Unofficial.** GrokGauge is a community project by [retroCombs](https://www.retrocombs.com).
@@ -30,17 +30,26 @@ GrokGauge tracks two weekly limits side by side:
 Features:
 
 - **Menu bar meter.** A small Grok-style glyph plus a percent, color-coded **green** up to 80%,
-  **orange** from 81–90%, and **red** above 90%. By default it shows the **higher** of the two
-  numbers. Turn on **Show both percentages in menu bar** to see `G 0% · B 9%` instead, each colored separately.
-- **Two ring gauges.** Grok on the left, Grok Bot on the right, with the same colors.
+  **orange** from 81–90%, and **red** above 90% (levels and colors are yours to change). Show the
+  **higher** of the two numbers, **both** (`G 42% · B 86%`), just one source, or only the logo tinted
+  by status. Optionally add the days to reset (`10% · 5d`) or hide the logo.
+- **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
+- **History & pace.** A 7-day sparkline for each source, plus a projection: "On track (≈40% at reset)"
+  or "At this pace you'll hit 100% by Fri 3 PM".
 - **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
 - **Per-product breakdown** of the Grok pool: Chat, Imagine, Voice, Build, and API.
 - **Extra Usage Credits.** Your prepaid Grok credit balance (and on-demand spend, if you've enabled it).
-- **Heads-up notifications** when Grok or Grok Bot crosses 80% and 90%, once per week for each.
-- **Refresh now**, last-updated time, and automatic refresh every 15 minutes (and after wake).
-- **Launch at login** toggle (uses macOS's built-in Login Items).
-- **Open Grok** (grok.com in your default browser) and **Open Grok Bot** (if installed) right from the menu.
+- **Heads-up notifications** when Grok or Grok Bot enters the warning and critical levels, once per week for each.
+- **Refresh now**, last-updated time, automatic refresh every 5–60 minutes, and smart retries
+  (backoff on errors, a quiet grace period after wake or a network change).
+- **Global shortcut** (default **⌃⌥G**) to open the dropdown from anywhere.
+- **Open Grok**, **Open Grok Bot** (if installed) and **Open X** (the X app if installed, otherwise x.com) buttons.
+- **Settings window** (gear button or **⌘,**): reorder and hide dropdown sections, menu bar style,
+  levels and colors (with a colorblind-friendly preset), notification levels, refresh interval,
+  launch at login, settings sync between Macs, diagnostics, and an optional update check.
+- **Accessible.** VoiceOver labels and values on the rings, bars, charts and buttons; respects
+  Reduce Motion and Increase Contrast.
 
 <p align="center">
   <img src="docs/popover-dark-demo.png" width="300" alt="GrokGauge dropdown, dark mode">
@@ -48,6 +57,15 @@ Features:
   <img src="docs/popover-light-demo.png" width="300" alt="GrokGauge dropdown, light mode">
 </p>
 <p align="center"><sub>Screenshots use sample data (Grok 42%, Grok Bot 86%).</sub></p>
+
+<p align="center">
+  <img src="docs/popover-stacked-colorblind-dark-demo.png" width="250" alt="Stacked rings with the colorblind-friendly palette">
+  &nbsp;
+  <img src="docs/popover-combined-compact-dark-demo.png" width="250" alt="One combined ring with some sections hidden">
+  &nbsp;
+  <img src="docs/popover-changed-shape-dark-demo.png" width="250" alt="The 'xAI changed something' state">
+</p>
+<p align="center"><sub>Stacked rings with the colorblind-friendly palette · one combined ring with sections hidden · what you see if xAI changes the usage reply.</sub></p>
 
 ## Requirements
 
@@ -102,14 +120,59 @@ Each release lists the zip's SHA-256 so you can check your download with `shasum
 
 ### First run
 
-1. Click the gauge in the menu bar to open the dropdown.
-2. When macOS asks, **allow notifications** so you get the 80% and 90% alerts.
-3. Turn on **Launch at login** in the dropdown if you want GrokGauge to start with your Mac.
-4. Use **Refresh now** any time; otherwise it updates itself every 15 minutes.
+1. Click the gauge in the menu bar (or press **⌃⌥G**) to open the dropdown.
+2. When macOS asks, **allow notifications** so you get the warning and critical alerts.
+3. Click the **gear** (or press **⌘,**) and turn on **Launch at login** under *Colors & Alerts*
+   if you want GrokGauge to start with your Mac.
+4. Use **Refresh now** any time; otherwise it updates itself every 15 minutes (adjustable).
 
-### Using it on several Macs
+## Settings
 
-Run `brew install --cask stevencombs/tap/grokgauge` and `grok login` on each Mac. Settings are per-Mac; there's nothing to sync.
+Open Settings with the gear button in the dropdown or **⌘,** while the dropdown is open.
+Everything applies immediately.
+
+| | |
+|---|---|
+| <img src="docs/prefs-layout-demo.png" width="400" alt="Layout tab"> | <img src="docs/prefs-menuBar-demo.png" width="400" alt="Menu Bar tab"> |
+| <img src="docs/prefs-colors-demo.png" width="400" alt="Colors & Alerts tab"> | <img src="docs/prefs-sync-demo.png" width="400" alt="Sync tab"> |
+| <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> |
+
+- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, history & pace,
+  reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
+  rows to reorder them (the arrow buttons and VoiceOver actions work too). Pick the ring style, and
+  choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
+- **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
+  green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.
+  Set or turn off the global shortcut here; if another app already owns a combination, GrokGauge says so.
+- **Colors & Alerts.** Drag the two handles of the level slider (or type the numbers) to set where
+  *warning* and *critical* start; the handles can't cross and stay at least 1% apart. Pick each level's
+  color with the macOS color picker; GrokGauge warns you if two colors are hard to tell apart
+  (CIEDE2000 ΔE below 12) and offers a colorblind-friendly preset (Okabe–Ito blue/orange/vermilion).
+  Colors apply to the rings, the menu bar percent and the product bars. Notifications follow the color
+  levels unless you uncheck **Notify at the color levels** and set separate ones. Also: refresh interval
+  (5, 15, 30 or 60 minutes) and **Launch at login**.
+- **Sync.** See [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…**
+  save and load the same JSON file.
+- **Diagnostics.** For Grok and Grok Bot: status, last success, last error, and (for Grok) when the
+  login expires, plus the app and macOS versions. **Copy Report** puts a plain-text summary on the
+  clipboard for bug reports; it never includes tokens, emails, account ids, or file paths.
+- **About.** Version, links, and **Check for updates daily** (on by default). When a newer release is
+  out, the dropdown footer shows **Update available** with a link to the release and the
+  `brew upgrade --cask grokgauge` command. GrokGauge never installs anything by itself.
+
+## Using it on several Macs
+
+Install GrokGauge and run `grok login` on each Mac (logins are never synced). To keep your
+**settings** the same everywhere, open *Settings › Sync* on each Mac and choose a folder your Macs
+already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
+
+- GrokGauge keeps one small file there, `GrokGauge/settings.json`, and watches it. It notices both
+  in-place edits and sync clients that replace the file, and also checks every 30 seconds as a fallback.
+- The newest change wins (by the time it was made). Changes made while a Mac is offline are resolved
+  the same way when it comes back.
+- **Only preferences sync**: layout, menu bar, levels, colors, notification levels, refresh interval,
+  shortcut, and the update-check switch. Never your Grok login, tokens, usage numbers, or history.
+- The folder choice itself stays on each Mac, so each one can point at its own path.
 
 ## Privacy
 
@@ -145,7 +208,19 @@ Run `brew install --cask stevencombs/tap/grokgauge` and `grok login` on each Mac
   Grok Bot's login or its encrypted secrets (`sand-secrets.json` and the "Grok Bot Safe Storage"
   Keychain item), and it never talks to Grok Bot's servers.
 
-### Both
+### Settings, history, and updates
+
+- **Settings sync** writes only `GrokGauge/settings.json` in the folder you choose, containing
+  preferences only (no tokens, emails, ids, usage, or history). Nothing is synced until you pick a folder.
+- **History** for the sparklines stays on your Mac in
+  `~/Library/Application Support/GrokGauge/history.json`: timestamps and percents only, pruned after
+  8 days, never synced or sent anywhere.
+- **Update check** (optional, daily) asks GitHub's public API for the latest
+  [stevencombs/GrokGauge](https://github.com/stevencombs/GrokGauge/releases) release. It's unauthenticated
+  and sends no identifiers besides a `GrokGauge/<version>` User-Agent.
+- **Open X** just opens the X app or x.com. GrokGauge reads no X data.
+
+### Everything
 
 - No analytics, no telemetry, no third-party servers.
 
@@ -160,8 +235,16 @@ Authorization: Bearer <token from ~/.grok/auth.json>
 
 and reads `config.creditUsagePercent`, `config.currentPeriod`, `config.productUsage`, and the credit
 balances. xAI doesn't document this endpoint and can change it at any time, which could break
-GrokGauge until it's updated. When xAI omits `creditUsagePercent` (it does right after a reset,
-since zero values are dropped), GrokGauge shows 0%.
+GrokGauge until it's updated.
+
+- When xAI omits `creditUsagePercent` but the rest of the reply looks normal (it does this right
+  after a reset, since zero values are dropped), GrokGauge shows 0% and labels the ring
+  **"Inferred (none reported)"**.
+- If the reply is JSON but no longer has the expected shape (no `config`, no current period), GrokGauge
+  shows **"xAI changed something"** and a dash instead of a misleading 0%, and keeps retrying.
+- Network errors are retried with exponential backoff (30 s, 1 min, 2 min, … up to 15 min). After your
+  Mac wakes or switches networks, GrokGauge waits a few seconds before refreshing and retries quietly
+  for a short grace period, so you don't see "You're offline" flash on wake.
 
 ### Grok Bot
 
@@ -205,6 +288,7 @@ Want the raw numbers? Run the app binary with a debug flag. None of them print y
 ```sh
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-usage   # Grok + Grok Bot; or --json
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-preview ~/Desktop/gg --demo   # dropdown, menu bar and Settings PNGs
 ```
 
 ## Build from source
@@ -226,23 +310,26 @@ certificate.
 
 ### Releasing
 
-1. Bump `VERSION`, commit, then tag: `git tag -a v1.2.3 -m "GrokGauge 1.2.3" && git push origin v1.2.3`.
+1. Bump `VERSION` (and `version` in `Casks/grokgauge.rb`), commit, then tag: `git tag -a v1.2.3 -m "GrokGauge 1.2.3" && git push origin v1.2.3`.
 2. The **Release** GitHub Action runs the tests, builds the universal app, and attaches
    `GrokGauge-<version>.zip` (and its `.sha256`) to a GitHub release.
 3. In [stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap), update `version`
-   and `sha256` in `Casks/grokgauge.rb`, then copy that file to `Casks/grokgauge.rb` here so the
-   two stay in sync. Check it with `brew audit --cask --strict --online stevencombs/tap/grokgauge`.
+   and `sha256` in `Casks/grokgauge.rb` (use the sha256 from the release; until then this repo's copy
+   carries a placeholder), then copy that file to `Casks/grokgauge.rb` here so the two stay in sync. Check it with `brew audit --cask --strict --online stevencombs/tap/grokgauge`.
 
 ### Project layout
 
 ```
-Sources/GrokGaugeCore/   auth.json + token renewal, the billing request, the Grok Bot cache reader (Foundation only)
-Sources/GrokGauge/       menu bar app (AppKit + SwiftUI), notifications, login item, debug CLI
+Sources/GrokGaugeCore/   auth.json + token renewal, the billing request, the Grok Bot cache reader,
+                         settings model + sync, colors, pace, history, update check (Foundation only)
+Sources/GrokGauge/       menu bar app (AppKit + SwiftUI), Settings window, notifications, shortcut, debug CLI
 Tests/                   swift-testing unit tests
 scripts/                 build-app.sh, test.sh, assets/make-icon.py
 Resources/               Info.plist template, AppIcon.icns
 Casks/grokgauge.rb       Copy of the cask in stevencombs/homebrew-tap
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute and [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## Credits
 
