@@ -25,7 +25,7 @@ enum DebugCLI {
             case .auth(.refreshRejected): message = "auth.x.ai refused to renew the Grok login (refresh token revoked or expired). Run `grok login` to reconnect."
             case .auth(.refreshUnavailable): message = "Couldn't renew the Grok login right now (network or auth.x.ai unavailable)."
             case .unauthorized(let code): message = "HTTP \(code): the Grok login was rejected. Run `grok login` to reconnect."
-            case .http(let code): message = "HTTP \(code) from the billing endpoint."
+            case .http(let code, let detail): message = "HTTP \(code) from the billing endpoint." + (detail.map { " Server said: \($0)" } ?? "")
             case .network(let m): message = "Network error: \(m)"
             case .badResponse: message = "The billing endpoint returned something that isn't JSON."
             case .unexpectedShape: message = "xAI changed something: the billing reply is JSON but not in the expected shape (no config or period). Not showing a number rather than guessing."

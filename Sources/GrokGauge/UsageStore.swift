@@ -8,7 +8,8 @@ enum UsageProblem: Equatable {
     case signedOut
     case expired
     case network(String)
-    case server(Int)
+    /// Non-2xx reply; `message` is the server's own (sanitized) error text, if any.
+    case server(Int, message: String?)
     case badResponse
     /// JSON came back, but not in the shape GrokGauge knows. Never shown as 0%.
     case changedShape
@@ -18,7 +19,7 @@ enum UsageProblem: Equatable {
         case .signedOut: return "Connect your Grok account"
         case .expired: return "Grok login expired"
         case .network(let m): return m
-        case .server(let code): return "Grok returned an error (\(code))"
+        case .server(let code, _): return "Grok returned an error (\(code))"
         case .badResponse: return "Unexpected response"
         case .changedShape: return "xAI changed something"
         }
@@ -29,6 +30,10 @@ enum UsageProblem: Equatable {
         case .signedOut: return "Run `grok login` in Terminal, then click Refresh."
         case .expired: return "GrokGauge couldn't renew it automatically. Run `grok login` to reconnect, then click Refresh."
         case .network: return "GrokGauge will retry automatically."
+        case .server(_, let message?):
+            // Shown as Markdown: drop markup characters so server text can't add links or styling.
+            let plain = String(message.filter { !"[]()*_`<>#".contains($0) })
+            return "Grok said: \u{201C}\(plain)\u{201D}. GrokGauge will retry automatically."
         case .server: return "GrokGauge will retry automatically."
         case .badResponse: return "Grok's reply wasn't readable. GrokGauge will retry automatically."
         case .changedShape:
@@ -37,13 +42,20 @@ enum UsageProblem: Equatable {
         }
     }
 
+    /// Line for Settings › Diagnostics: the title plus the server's sanitized message, when it sent one.
+    var diagnosticsMessage: String {
+        if case .server(_, let message?) = self { return "\(title): \(message)" }
+        return title
+    }
+
     var needsLogin: Bool { self == .signedOut || self == .expired }
 
     /// Worth retrying soon with backoff (instead of waiting for the next scheduled refresh).
     var isTransient: Bool {
         switch self {
         case .network, .badResponse: return true
-        case .server(let code): return code == 429 || code >= 500
+        // 400/408/421 have come from a failing proxy instance, not from a bad request: retry soon.
+        case .server(let code, _): return code == 400 || code == 408 || code == 421 || code == 429 || code >= 500
         default: return false
         }
     }
@@ -63,7 +75,7 @@ enum UsageProblem: Equatable {
         case .auth(.expired)?, .auth(.refreshRejected)?, .unauthorized?: self = .expired
         case .auth(.refreshUnavailable)?: self = .network("Couldn't renew your Grok login")
         case .network(let m)?: self = .network(m)
-        case .http(let code)?: self = .server(code)
+        case .http(let code, let message)?: self = .server(code, message: message)
         case .unexpectedShape?: self = .changedShape
         case .badResponse?, nil: self = .badResponse
         }
@@ -279,7 +291,7 @@ final class UsageStore: ObservableObject {
     }
 
     private func handleFailure(_ p: UsageProblem) {
-        grokLastError = (p.title, Date())
+        grokLastError = (p.diagnosticsMessage, Date())
         if p.isTransient {
             failures += 1
             let delay = Backoff.delay(attempt: failures)
