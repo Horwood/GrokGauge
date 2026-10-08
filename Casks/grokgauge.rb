@@ -1,30 +1,41 @@
-# Template for a future tap: github.com/stevencombs/homebrew-tap  ->  Casks/grokgauge.rb
-# After tagging a release, set `version` and replace `sha256` with the value from
-# GrokGauge-<version>.zip.sha256 attached to that GitHub release.
+# Mirror of github.com/stevencombs/homebrew-tap/blob/main/Casks/grokgauge.rb (keep in sync).
 cask "grokgauge" do
   version "0.3.0"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "f2a1ce893646ac18413f234ddbfb4f9e522691d278f42b61dd2caebc76a6c687"
 
   url "https://github.com/stevencombs/GrokGauge/releases/download/v#{version}/GrokGauge-#{version}.zip"
   name "GrokGauge"
   desc "Menu bar gauge for SuperGrok and Grok Bot weekly usage"
   homepage "https://github.com/stevencombs/GrokGauge"
 
-  depends_on macos: ">= :sonoma"
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  depends_on macos: :sonoma
 
   app "GrokGauge.app"
 
+  # GrokGauge is open source but ad-hoc signed (not notarized), so macOS would block
+  # the first launch. Clear the download quarantine flag on this one app only.
+  postflight_steps do
+    on_macos do
+      run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/GrokGauge.app"]
+    end
+  end
+
   uninstall quit: "com.retrocombs.GrokGauge"
 
-  zap trash: [
-    "~/Library/Preferences/com.retrocombs.GrokGauge.plist",
-  ]
+  zap trash: "~/Library/Preferences/com.retrocombs.GrokGauge.plist"
 
   caveats <<~EOS
+    GrokGauge is ad-hoc signed, not notarized by Apple. This cask removed the
+    download quarantine flag from #{appdir}/GrokGauge.app so it opens normally.
+
     GrokGauge reads the login created by the Grok CLI. If you haven't already:
       grok login
 
-    GrokGauge is ad-hoc signed (not notarized). If macOS blocks it on first launch, run:
-      xattr -dr com.apple.quarantine "#{appdir}/GrokGauge.app"
+    Grok Bot usage appears automatically if the Grok Bot app is installed.
   EOS
 end

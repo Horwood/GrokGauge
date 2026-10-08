@@ -68,11 +68,18 @@ Features:
 
 ## Install
 
-### Homebrew
+### Homebrew (recommended)
 
 ```sh
 brew install --cask stevencombs/tap/grokgauge
 ```
+
+This installs **GrokGauge.app** into `/Applications`. Update it with `brew upgrade --cask grokgauge`.
+Remove it with `brew uninstall --cask grokgauge` (add `--zap` to also delete its preferences).
+
+GrokGauge is ad-hoc signed, not notarized by Apple. So that macOS doesn't block the first launch,
+the cask ([stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap)) removes the
+download quarantine flag from `GrokGauge.app`, and only that app, right after installing it.
 
 ### Manual
 
@@ -80,13 +87,18 @@ brew install --cask stevencombs/tap/grokgauge
 2. Unzip it and drag **GrokGauge.app** into `/Applications` (or `~/Applications`).
 3. Open it. Look for the gauge in your menu bar.
 
-GrokGauge releases are ad-hoc signed, not notarized by Apple. If macOS says the app can't be
-opened, either right-click it and choose **Open**, allow it under **System Settings › Privacy &
-Security**, or run:
+GrokGauge releases are ad-hoc signed, not notarized by Apple, so the first time you open a
+manually downloaded copy, macOS says it can't verify the app. Either:
 
-```sh
-xattr -dr com.apple.quarantine /Applications/GrokGauge.app
-```
+- open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway** next to
+  GrokGauge (recent macOS versions no longer offer a right-click **Open** bypass), or
+- remove the quarantine flag in Terminal:
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/GrokGauge.app
+  ```
+
+Each release lists the zip's SHA-256 so you can check your download with `shasum -a 256`.
 
 ### First run
 
@@ -97,7 +109,7 @@ xattr -dr com.apple.quarantine /Applications/GrokGauge.app
 
 ### Using it on several Macs
 
-Install GrokGauge and run `grok login` on each Mac. Settings are per-Mac; there's nothing to sync.
+Run `brew install --cask stevencombs/tap/grokgauge` and `grok login` on each Mac. Settings are per-Mac; there's nothing to sync.
 
 ## Privacy
 
@@ -214,10 +226,12 @@ certificate.
 
 ### Releasing
 
-1. Bump `VERSION`, commit, then tag: `git tag v0.1.0 && git push --tags`.
-2. The **Release** GitHub Action builds the universal app and attaches `GrokGauge-<version>.zip`
-   (and its `.sha256`) to a GitHub release.
-3. Copy `Casks/grokgauge.rb` into the `stevencombs/homebrew-tap` repo, then update `version` and `sha256`.
+1. Bump `VERSION`, commit, then tag: `git tag -a v1.2.3 -m "GrokGauge 1.2.3" && git push origin v1.2.3`.
+2. The **Release** GitHub Action runs the tests, builds the universal app, and attaches
+   `GrokGauge-<version>.zip` (and its `.sha256`) to a GitHub release.
+3. In [stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap), update `version`
+   and `sha256` in `Casks/grokgauge.rb`, then copy that file to `Casks/grokgauge.rb` here so the
+   two stay in sync. Check it with `brew audit --cask --strict --online stevencombs/tap/grokgauge`.
 
 ### Project layout
 
@@ -227,7 +241,7 @@ Sources/GrokGauge/       menu bar app (AppKit + SwiftUI), notifications, login i
 Tests/                   swift-testing unit tests
 scripts/                 build-app.sh, test.sh, assets/make-icon.py
 Resources/               Info.plist template, AppIcon.icns
-Casks/grokgauge.rb       Homebrew cask template for the tap
+Casks/grokgauge.rb       Copy of the cask in stevencombs/homebrew-tap
 ```
 
 ## Credits
