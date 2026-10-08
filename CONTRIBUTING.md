@@ -8,6 +8,8 @@ fixes and focused features are all welcome.
 - **Bugs:** open an issue with the bug template and paste the report from
   **Settings › Diagnostics › Copy Report**. It never contains tokens, emails, account ids or paths.
 - **Features:** open a feature request first for anything bigger than a small fix, so we can agree on the shape.
+- **Anything else:** email [retroCombs@icloud.com](mailto:retroCombs@icloud.com) or find Steven Combs on
+  YouTube at [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech).
 
 ## Building
 

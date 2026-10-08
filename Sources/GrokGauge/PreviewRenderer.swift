@@ -96,6 +96,10 @@ enum PreviewRenderer {
                                        tab: tab, scrollable: false, tokenExpiry: { expiry })
             ok = renderView(view, scheme: .dark, background: true,
                             to: dir.appendingPathComponent("prefs-\(tab.rawValue)\(suffix).png")) && ok
+            if tab == .about {
+                ok = renderView(view, scheme: .light, background: true,
+                                to: dir.appendingPathComponent("prefs-about-light\(suffix).png")) && ok
+            }
         }
 
         let g = snapshot.roundedPercent

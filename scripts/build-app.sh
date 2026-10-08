@@ -49,6 +49,7 @@ lipo -create "${binaries[@]}" -output "$APP/Contents/MacOS/$APP_NAME"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD__/$BUILD_NUMBER/g" \
   Resources/Info.plist > "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/retrocombs-logo.png "$APP/Contents/Resources/retrocombs-logo.png"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 

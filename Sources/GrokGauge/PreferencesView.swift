@@ -348,6 +348,7 @@ struct PreferencesView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            MakerCard()
             PrefGroup(title: "Updates",
                       footer: "Checks GitHub's public releases for stevencombs/GrokGauge (no account, no identifiers). Nothing installs automatically.") {
                 Toggle("Check for updates daily", isOn: settings.checkForUpdates)
@@ -522,4 +523,71 @@ func historyGraphSummary(_ s: GaugeSettings) -> String {
     let shown = [s.showGrokHistory ? "Grok" : nil, s.showGrokBotHistory ? "Grok Bot" : nil].compactMap { $0 }
     guard s.isVisible(.historyPace), !shown.isEmpty else { return "off" }
     return "\(s.graphStyle.title) (\(shown.joined(separator: ", ")))"
+}
+
+// MARK: - About › maker
+
+/// The retroCombs logo, credit line, YouTube channel and contact address.
+private struct MakerCard: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 18) {
+            if let logo = AppInfo.makerLogo {
+                Image(nsImage: logo)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(width: 112, height: 112)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(scheme == .dark ? 0.16 : 0.08), lineWidth: 0.5))
+                    .shadow(color: .black.opacity(scheme == .dark ? 0.45 : 0.18), radius: 8, x: 0, y: 4)
+                    .accessibilityLabel("retroCombs logo")
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Made by Steven Combs (retroCombs)")
+                        .font(.headline)
+                    Text("Videos, projects and updates on YouTube.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    NSWorkspace.shared.open(AppInfo.youTubeURL)
+                } label: {
+                    Label("YouTube: \(AppInfo.youTubeHandle)", systemImage: "play.rectangle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(YouTubeButtonStyle())
+                .help(AppInfo.youTubeURL.absoluteString)
+                .accessibilityLabel("Open the retroCombs-Tech YouTube channel")
+                Link(destination: AppInfo.contactURL) {
+                    Label("Contact: \(AppInfo.contactEmail)", systemImage: "envelope")
+                        .font(.system(size: 12))
+                }
+                .help("Write to \(AppInfo.contactEmail)")
+                .accessibilityLabel("Email \(AppInfo.contactEmail)")
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.quinary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.separator.opacity(0.6), lineWidth: 0.5))
+    }
+}
+
+/// Always-red, always-prominent button (system prominent buttons turn gray in inactive windows).
+private struct YouTubeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(Capsule().fill(Color(red: 0.85, green: 0.11, blue: 0.10)
+                .opacity(configuration.isPressed ? 0.75 : 1)))
+            .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+            .contentShape(Capsule())
+    }
 }

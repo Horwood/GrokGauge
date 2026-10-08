@@ -169,7 +169,8 @@ Everything applies immediately.
   error message for HTTP errors other than 401/403, with anything token-, email- or id-like removed), and (for Grok) when the
   login expires, plus the app and macOS versions. **Copy Report** puts a plain-text summary on the
   clipboard for bug reports; it never includes tokens, emails, account ids, or file paths.
-- **About.** Version, links, and **Check for updates daily** (on by default). When a newer release is
+- **About.** Version, who made it (with the [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech)
+  YouTube channel and a contact address), links, and **Check for updates daily** (on by default). When a newer release is
   out, the dropdown footer shows **Update available** with a link to the release and the
   `brew upgrade --cask grokgauge` command. GrokGauge never installs anything by itself.
 
@@ -347,10 +348,21 @@ Casks/grokgauge.rb       Copy of the cask in stevencombs/homebrew-tap
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute and [CHANGELOG.md](CHANGELOG.md) for what changed.
 
-## Credits
+## Credits and contact
 
-Created by **Steven Combs** ([retroCombs](https://www.youtube.com/@retroCombs)) and built together with
-**Grok Bot**, Steven's AI assistant, which wrote the code, tests, and docs to his spec.
+<p>
+  <img src="Resources/retrocombs-logo.png" width="112" align="left" alt="retroCombs logo: a retro joystick on a circuit board" style="margin-right: 16px">
+</p>
+
+Created by **Steven Combs** (**retroCombs**) and built together with **Grok Bot**, Steven's AI assistant,
+which wrote the code, tests, and docs to his spec.
+
+- **YouTube:** [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech)
+- **Contact:** [retroCombs@icloud.com](mailto:retroCombs@icloud.com)
+- **Bugs and feature requests:** [GitHub issues](https://github.com/stevencombs/GrokGauge/issues/new/choose)
+
+The same links are in GrokGauge under **Settings › About**.
+<br clear="left">
 
 
 Endpoint details were cross-checked against the open-source

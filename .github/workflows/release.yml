@@ -42,6 +42,10 @@ jobs:
             dist/GrokGauge-${{ steps.version.outputs.version }}.zip
             dist/GrokGauge-${{ steps.version.outputs.version }}.zip.sha256
           generate_release_notes: true
+          body: |
+            See [CHANGELOG.md](https://github.com/stevencombs/GrokGauge/blob/main/CHANGELOG.md) for details.
+
+            Made by Steven Combs (retroCombs) · YouTube: [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech) · Contact: [retroCombs@icloud.com](mailto:retroCombs@icloud.com)
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

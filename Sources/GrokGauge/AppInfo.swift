@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 enum AppInfo {
     static var version: String {
@@ -7,6 +7,15 @@ enum AppInfo {
 
     static let grokURL = URL(string: "https://grok.com")!
     static let repoURL = URL(string: "https://github.com/stevencombs/GrokGauge")!
+    static let youTubeHandle = "@retroCombs-Tech"
+    static let youTubeURL = URL(string: "https://www.youtube.com/@retroCombs-Tech")!
+    static let contactEmail = "retroCombs@icloud.com"
+    static let contactURL = URL(string: "mailto:retroCombs@icloud.com")!
+
+    /// The retroCombs logo bundled in Contents/Resources (nil when running outside the .app).
+    static var makerLogo: NSImage? {
+        Bundle.main.url(forResource: "retrocombs-logo", withExtension: "png").flatMap { NSImage(contentsOf: $0) }
+    }
     static let refreshInterval: TimeInterval = 15 * 60   // default; see Settings › Colors & Alerts
     static let botRefreshInterval: TimeInterval = 2 * 60
 }

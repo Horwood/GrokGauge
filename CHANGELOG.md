@@ -23,6 +23,8 @@ dates are when the version was built.
   each show a small drawing of the style. Applies to both graphs.
 - **Choose which history graphs appear:** "Grok history" and "Grok Bot history" toggles in Settings › Layout.
   Turning both off hides the "Last 7 days & pace" section (its own checkbox still works too).
+- Settings › About shows who makes GrokGauge: the retroCombs logo, a **YouTube: @retroCombs-Tech** button and a
+  contact address (retroCombs@icloud.com). The README, issue chooser, CONTRIBUTING and release notes point there too.
 - Settings › Diagnostics shows the server's own error message for errors other than 401/403
   (sanitized: no tokens, emails, ids or paths, at most 160 characters). `--print-usage` shows it too.
 
