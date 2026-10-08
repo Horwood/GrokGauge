@@ -82,19 +82,22 @@ import Testing
         let json = """
         {"https://accounts.x.ai/sign-in::a":{"key":"old","expires_at":"2026-10-01T00:00:00Z"},
          "https://auth.x.ai::b":{"key":" tok ","expires_at":"2026-10-08T07:37:02.380497Z","email":"me@example.com",
-           "oidc_issuer":"https://auth.x.ai"}}
+           "oidc_issuer":"https://auth.x.ai","oidc_client_id":"b","refresh_token":"rt"}}
         """
         let c = try AuthStore.select(fromJSON: Data(json.utf8), now: now)
         #expect(c.token == "tok")
         #expect(c.email == "me@example.com")
+        #expect(c.canRefresh)
         #expect(c.description.contains("<redacted>"))
+        #expect(!c.description.contains("tok\""))
     }
 
-    @Test func expiredTokenIsReported() {
-        let json = #"{"https://auth.x.ai::b":{"key":"tok","expires_at":"2026-10-07T11:00:00Z"}}"#
-        #expect(throws: AuthError.expired(ISODate.parse("2026-10-07T11:00:00Z")!)) {
-            try AuthStore.select(fromJSON: Data(json.utf8), now: now)
-        }
+    @Test func expiredEntryIsStillReturnedForRenewal() throws {
+        let json = #"{"https://auth.x.ai::cid":{"key":"tok","refresh_token":"rt","expires_at":"2026-10-07T11:00:00Z"}}"#
+        let c = try AuthStore.select(fromJSON: Data(json.utf8), now: now)
+        #expect(c.isExpired(now: now))
+        #expect(c.issuer == "https://auth.x.ai")     // derived from the scope key
+        #expect(c.clientID == "cid")
     }
 
     @Test func emptyFileIsSignedOut() {

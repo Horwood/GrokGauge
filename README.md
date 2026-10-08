@@ -49,9 +49,10 @@ view so you're never surprised:
   grok login
   ```
 
-  GrokGauge reads the login the CLI saves in `~/.grok/auth.json`. It never signs in or refreshes
-  tokens by itself. If the login expires, the menu shows **"Run `grok login` to reconnect."**
-  Using the Grok CLI normally keeps the login fresh.
+  GrokGauge uses the login the CLI saves in `~/.grok/auth.json` and **renews it automatically**
+  the same way the CLI does, so you stay signed in without running `grok login` again. You only
+  need to sign in again if xAI revokes the login (for example after a password change or
+  "sign out everywhere"); the menu then shows **"Run `grok login` to reconnect."**
 
 ## Install
 
@@ -88,10 +89,17 @@ Install GrokGauge and run `grok login` on each Mac. Settings are per-Mac; there'
 
 ## Privacy
 
-- Your Grok token **never leaves your Mac** except in the one HTTPS request GrokGauge makes to
-  xAI's usage endpoint (`cli-chat-proxy.grok.com`). It goes nowhere else.
-- GrokGauge only **reads** `~/.grok/auth.json`. It never writes, copies, logs, or refreshes the token.
-- Requests use an ephemeral session (no cookies, no cache) and refuse redirects, so the token
+- Your Grok tokens **never leave your Mac** except to two xAI hosts, over HTTPS:
+  - the access token goes to xAI's usage endpoint (`cli-chat-proxy.grok.com`), and
+  - the refresh token goes to xAI's sign-in server (`auth.x.ai`), only when the login needs renewing.
+  They go nowhere else. GrokGauge refuses to send them to any other host.
+- **GrokGauge writes to `~/.grok/auth.json`.** When it renews your login it saves the new tokens
+  back into that file so the Grok CLI keeps working with them. It changes only the token fields
+  of that one login (`key`, `refresh_token`, `expires_at`, `create_time`), keeps every other field
+  and the file's owner-only (`0600`) permissions, and writes atomically while holding the same
+  `auth.json.lock` the CLI uses, so the two never renew at the same moment.
+- Tokens are never logged, printed, or copied anywhere else.
+- Requests use an ephemeral session (no cookies, no cache) and refuse redirects, so tokens
   can't be forwarded to another host.
 - No analytics, no telemetry, no third-party servers.
 
@@ -109,10 +117,31 @@ balances. xAI doesn't document this endpoint and can change it at any time, whic
 GrokGauge until it's updated. When xAI omits `creditUsagePercent` (it does right after a reset,
 since zero values are dropped), GrokGauge shows 0%.
 
-Want the raw numbers? Run the app binary with a debug flag. It never prints your token:
+### Staying signed in
+
+Grok CLI access tokens last a few hours. GrokGauge renews the login when the access token is
+within an hour of expiring, or right away if the usage endpoint rejects it, then retries the usage
+request once. Renewal uses the same OpenID Connect refresh flow as the official Grok CLI
+([xai-org/grok-build](https://github.com/xai-org/grok-build), `xai-grok-login`):
+
+1. Take the CLI's lock (`~/.grok/auth.json.lock`) and re-read `auth.json`. If the CLI already
+   renewed the token, use that one and stop.
+2. Look up the token endpoint from `https://auth.x.ai/.well-known/openid-configuration`.
+3. `POST https://auth.x.ai/oauth2/token` with `grant_type=refresh_token`, the stored
+   `refresh_token`, and the stored `oidc_client_id` (plus `principal_type`/`principal_id` when present).
+4. Save the new access token, the rotated refresh token (if xAI sent one), and the new expiry back
+   into `auth.json`, then release the lock.
+
+If xAI rejects the refresh token, GrokGauge stops and asks you to run `grok login`. If auth.x.ai
+is just unreachable, it keeps using the current token while it's still valid and tries again later.
+
+### Debug flags
+
+Want the raw numbers? Run the app binary with a debug flag. None of them print your tokens:
 
 ```sh
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-usage   # or --json
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
 ```
 
 ## Build from source

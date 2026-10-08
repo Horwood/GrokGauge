@@ -23,7 +23,7 @@ enum UsageProblem: Equatable {
     var detail: String {
         switch self {
         case .signedOut: return "Run `grok login` in Terminal, then click Refresh."
-        case .expired: return "Run `grok login` to reconnect, then click Refresh."
+        case .expired: return "GrokGauge couldn't renew it automatically. Run `grok login` to reconnect, then click Refresh."
         case .network: return "GrokGauge will retry automatically."
         case .server: return "GrokGauge will retry automatically."
         case .badResponse: return "xAI may have changed the unofficial usage endpoint."
@@ -35,7 +35,8 @@ enum UsageProblem: Equatable {
     init(_ error: Error) {
         switch error as? FetchError {
         case .auth(.notSignedIn)?, .auth(.unreadable)?: self = .signedOut
-        case .auth(.expired)?, .unauthorized?: self = .expired
+        case .auth(.expired)?, .auth(.refreshRejected)?, .unauthorized?: self = .expired
+        case .auth(.refreshUnavailable)?: self = .network("Couldn't renew your Grok login")
         case .network(let m)?: self = .network(m)
         case .http(let code)?: self = .server(code)
         case .badResponse?, nil: self = .badResponse

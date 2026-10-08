@@ -8,6 +8,14 @@ if arguments.contains("--version") {
     exit(0)
 }
 
+if arguments.contains("--refresh-now") {
+    Task {
+        let code = await DebugCLI.refreshNow()
+        exit(code)
+    }
+    dispatchMain()
+}
+
 if arguments.contains("--print-usage") || arguments.contains("--json") {
     Task {
         let code = await DebugCLI.printUsage(json: arguments.contains("--json"))
@@ -42,6 +50,7 @@ if arguments.contains("--help") || arguments.contains("-h") {
       GrokGauge                 Launch the menu bar app
       GrokGauge --print-usage   Fetch once and print usage (never prints your token)
       GrokGauge --json          Same, as JSON
+      GrokGauge --refresh-now   Renew the Grok login now (prints expiry times only)
       GrokGauge --render-preview DIR [--demo]   Write popover/menu bar PNGs (for docs)
       GrokGauge --version
     """)

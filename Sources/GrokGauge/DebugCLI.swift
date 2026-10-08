@@ -14,7 +14,9 @@ enum DebugCLI {
             switch e {
             case .auth(.notSignedIn): message = "Not signed in: no usable token in \(AuthStore.authFileURL.path). Run `grok login`."
             case .auth(.unreadable): message = "Could not read \(AuthStore.authFileURL.path). Run `grok login`."
-            case .auth(.expired(let d)): message = "Grok login expired at \(UsageFormat.resetDate(d)). Run `grok login` to reconnect."
+            case .auth(.expired(let d)): message = "Grok login expired at \(UsageFormat.resetDate(d)) and has no refresh token. Run `grok login` to reconnect."
+            case .auth(.refreshRejected): message = "auth.x.ai refused to renew the Grok login (refresh token revoked or expired). Run `grok login` to reconnect."
+            case .auth(.refreshUnavailable): message = "Couldn't renew the Grok login right now (network or auth.x.ai unavailable)."
             case .unauthorized(let code): message = "HTTP \(code): the Grok login was rejected. Run `grok login` to reconnect."
             case .http(let code): message = "HTTP \(code) from the billing endpoint."
             case .network(let m): message = "Network error: \(m)"
@@ -24,6 +26,36 @@ enum DebugCLI {
             return 1
         } catch {
             FileHandle.standardError.write(Data("error: request failed\n".utf8))
+            return 1
+        }
+    }
+
+    /// `GrokGauge --refresh-now`: renew the Grok login once, right now. Prints expiry times only.
+    static func refreshNow() async -> Int32 {
+        let url = AuthStore.authFileURL
+        let before = try? AuthStore.readBest(from: url)
+        do {
+            let result = try await AuthSession(authURL: url).credential(force: true)
+            let c = result.credential
+            print("Auth file:        \(url.path)")
+            print("Previous expiry:  \(before?.expiresAt.map { UsageFormat.resetDate($0) } ?? "unknown")")
+            print("New expiry:       \(c.expiresAt.map { UsageFormat.resetDate($0) } ?? "unknown")")
+            print("Renewed:          \(result.refreshed ? "yes" : "no")\(result.adopted ? " (adopted a token the CLI already renewed)" : "")")
+            print("Refresh token rotated: \(result.refreshTokenRotated ? "yes" : "no")")
+            return result.refreshed || result.adopted ? 0 : 1
+        } catch let e as AuthError {
+            let why: String
+            switch e {
+            case .notSignedIn: why = "not signed in. Run `grok login`."
+            case .unreadable: why = "couldn't read \(url.path)."
+            case .expired: why = "the login has no refresh token. Run `grok login`."
+            case .refreshRejected: why = "auth.x.ai rejected the refresh token. Run `grok login`."
+            case .refreshUnavailable: why = "couldn't reach auth.x.ai (or the auth file lock was busy)."
+            }
+            FileHandle.standardError.write(Data("error: renewal failed: \(why)\n".utf8))
+            return 1
+        } catch {
+            FileHandle.standardError.write(Data("error: renewal failed while writing \(url.path)\n".utf8))
             return 1
         }
     }

@@ -2,20 +2,23 @@ import Foundation
 
 public enum FetchError: Error, Equatable {
     case auth(AuthError)
-    case unauthorized(Int)      // 401 / 403 from the endpoint
+    case unauthorized(Int)      // 401 / 403 from the endpoint, even after renewing
     case http(Int)
     case network(String)
     case badResponse
 }
 
 /// Fetches the shared weekly usage pool from the (unofficial) Grok CLI billing endpoint.
+/// The access token goes only to `endpoint`; renewal (refresh token -> auth.x.ai) lives in `AuthSession`.
 public final class BillingClient: @unchecked Sendable {
     public static let endpoint = URL(string: "https://cli-chat-proxy.grok.com/v1/billing?format=credits")!
 
+    public let auth: AuthSession
     private let session: URLSession
     private let userAgent: String
 
-    public init(appVersion: String = "dev") {
+    public init(appVersion: String = "dev", auth: AuthSession = AuthSession()) {
+        self.auth = auth
         let config = URLSessionConfiguration.ephemeral   // no disk cache, no cookie jar
         config.timeoutIntervalForRequest = 15
         config.timeoutIntervalForResource = 30
@@ -27,14 +30,28 @@ public final class BillingClient: @unchecked Sendable {
         userAgent = "GrokGauge/\(appVersion) (macOS menu bar)"
     }
 
-    public func fetch(now: Date = Date()) async throws -> UsageSnapshot {
-        let credential: GrokCredential
+    public func fetch() async throws -> UsageSnapshot {
+        let first = try await credential(rejecting: nil)
         do {
-            credential = try AuthStore.load(now: now)
+            return try await fetchBilling(with: first)
+        } catch FetchError.unauthorized {
+            // Token refused: renew (or adopt a token the CLI renewed) and retry exactly once.
+            let renewed = try await credential(rejecting: first)
+            return try await fetchBilling(with: renewed)
+        }
+    }
+
+    private func credential(rejecting rejected: GrokCredential?) async throws -> GrokCredential {
+        do {
+            return try await auth.credential(rejecting: rejected).credential
         } catch let e as AuthError {
             throw FetchError.auth(e)
+        } catch {
+            throw FetchError.auth(.refreshUnavailable)
         }
+    }
 
+    private func fetchBilling(with credential: GrokCredential) async throws -> UsageSnapshot {
         var request = URLRequest(url: Self.endpoint)
         request.httpMethod = "GET"
         request.setValue("Bearer \(credential.token)", forHTTPHeaderField: "Authorization")
@@ -61,7 +78,7 @@ public final class BillingClient: @unchecked Sendable {
         }
 
         do {
-            return try UsageParser.parse(data, now: now)
+            return try UsageParser.parse(data, now: Date())
         } catch {
             throw FetchError.badResponse
         }
@@ -75,13 +92,5 @@ public final class BillingClient: @unchecked Sendable {
         case .httpTooManyRedirects, .redirectToNonExistentLocation: return "Unexpected redirect"
         default: return "Network error"
         }
-    }
-}
-
-private final class NoRedirects: NSObject, URLSessionTaskDelegate {
-    func urlSession(_ session: URLSession, task: URLSessionTask,
-                    willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest) async -> URLRequest? {
-        nil
     }
 }
