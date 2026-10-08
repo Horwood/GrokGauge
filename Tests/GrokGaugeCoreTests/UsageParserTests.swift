@@ -54,6 +54,28 @@ import Testing
         #expect(throws: UsageParserError.missingConfig) { try UsageParser.parse(Data("{}".utf8)) }
     }
 
+    @Test func detectsUnexpectedShape() {
+        // Missing period: the "missing percent = 0%" rule must not kick in.
+        #expect(throws: UsageParserError.missingPeriod) {
+            try UsageParser.parse(Data(#"{"config":{"isUnifiedBillingUser":true}}"#.utf8))
+        }
+        #expect(throws: UsageParserError.missingPeriod) {
+            try UsageParser.parse(Data(#"{"config":{"creditUsagePercent":12,"currentPeriod":{"type":"X"}}}"#.utf8))
+        }
+        // Renamed top level.
+        #expect(throws: UsageParserError.missingConfig) {
+            try UsageParser.parse(Data(#"{"billingConfig":{"creditUsagePercent":3}}"#.utf8))
+        }
+        // Known field with a new type.
+        #expect(throws: UsageParserError.unexpectedTypes) {
+            try UsageParser.parse(Data(#"{"config":{"currentPeriod":"weekly"}}"#.utf8))
+        }
+        // A JSON array isn't the billing object either, but it's not a shape we can talk about.
+        #expect(throws: UsageParserError.notJSON) { try UsageParser.parse(Data("[1,2]".utf8)) }
+        #expect(UsageParserError.missingPeriod.isShapeChange)
+        #expect(!UsageParserError.notJSON.isShapeChange)
+    }
+
     @Test func colorThresholds() {
         #expect(UsageLevel.forPercent(0) == .normal)
         #expect(UsageLevel.forPercent(80) == .normal)

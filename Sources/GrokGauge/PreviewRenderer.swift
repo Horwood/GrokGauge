@@ -2,7 +2,8 @@ import AppKit
 import GrokGaugeCore
 import SwiftUI
 
-/// Renders README images offscreen. Never prints or writes the token.
+/// Renders README images offscreen (no Screen Recording permission needed).
+/// Never prints or writes the token; previews use inert settings and never touch the sync folder.
 @MainActor
 enum PreviewRenderer {
     static func render(to dir: URL, demo: Bool) async -> Int32 {
@@ -11,9 +12,11 @@ enum PreviewRenderer {
         let snapshot: UsageSnapshot
         var bot: GrokBotSnapshot?
         var botProblem: BotProblem?
+        let historyStore: HistoryStore
         if demo {
             snapshot = sample
             bot = sampleBot
+            historyStore = HistoryStore.preview(HistoryStore.demoHistory(grokNow: sample.percent, botNow: sampleBot.percent))
         } else {
             do {
                 snapshot = try await BillingClient(appVersion: AppInfo.version).fetch()
@@ -22,23 +25,88 @@ enum PreviewRenderer {
                 return 1
             }
             do { bot = try GrokBotUsageReader.read() } catch let e as GrokBotUsageError { botProblem = BotProblem(e) } catch { botProblem = .unrecognized }
+            historyStore = HistoryStore.preview(UsageHistory.load())
         }
+        let store = UsageStore(notifier: UsageNotifier())
+        store.showPreview(snapshot, bot: bot, botProblem: botProblem)
+        let settings = SettingsStore.preview()
         let suffix = demo ? "-demo" : ""
         var ok = true
+
         for scheme in [ColorScheme.dark, .light] {
             let name = scheme == .dark ? "dark" : "light"
-            ok = renderPopover(snapshot, bot: bot, botProblem: botProblem, scheme: scheme,
-                               to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
+            let view = PopoverView(store: store, settingsStore: settings, history: historyStore,
+                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil))
+            ok = renderView(view, scheme: scheme, background: true,
+                            to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
+
+        if demo {
+            // Layout variants and the "xAI changed something" state, for docs and review.
+            var stacked = GaugeSettings()
+            stacked.ringStyle = .stacked
+            stacked.colors = .colorblindFriendly
+            var combined = GaugeSettings()
+            combined.ringStyle = .combined
+            combined.sections = combined.sections.map { item in
+                var i = item
+                if [.productBreakdown, .credits].contains(i.id) { i.visible = false }
+                return i
+            }
+            let variants: [(String, GaugeSettings, UsageStore)] = [
+                ("stacked-colorblind", stacked, store),
+                ("combined-compact", combined, store),
+                ("changed-shape", GaugeSettings(), {
+                    let s = UsageStore(notifier: UsageNotifier())
+                    s.showPreview(nil, problem: .changedShape, bot: bot, botProblem: botProblem)
+                    return s
+                }()),
+            ]
+            for (name, s, st) in variants {
+                let view = PopoverView(store: st, settingsStore: SettingsStore.preview(s), history: historyStore,
+                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil))
+                ok = renderView(view, scheme: .dark, background: true,
+                                to: dir.appendingPathComponent("popover-\(name)-dark-demo.png")) && ok
+            }
+        }
+
+        // Preferences tabs (dark), with data that shows each control in a realistic state.
+        let prefsSettings: SettingsStore
+        if demo {
+            prefsSettings = SettingsStore.preview(
+                GaugeSettings(), syncFolder: URL(fileURLWithPath: NSHomeDirectory() + "/Google Drive/MacSyncing"),
+                state: .synced(Date().addingTimeInterval(-90)))
+        } else {
+            prefsSettings = SettingsStore.preview()
+        }
+        let updates = demo
+            ? UpdateMonitor.preview(available: ReleaseInfo(tag: "v0.9.1", url: URL(string: "https://github.com/stevencombs/GrokGauge/releases/tag/v0.9.1")!),
+                                    lastChecked: Date().addingTimeInterval(-3 * 3600))
+            : UpdateMonitor.preview(available: nil, lastChecked: Date())
+        let expiry = demo ? Date().addingTimeInterval(5.5 * 3600) : store.grokTokenExpiry()
+        for tab in PrefsTab.allCases {
+            let view = PreferencesView(settingsStore: prefsSettings, store: store, updates: updates,
+                                       loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared,
+                                       tab: tab, scrollable: false, tokenExpiry: { expiry })
+            ok = renderView(view, scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("prefs-\(tab.rawValue)\(suffix).png")) && ok
+        }
+
         let g = snapshot.roundedPercent
         let b = bot?.roundedPercent
-        let titles: [[MenuBarSegment]] = demo
-            ? [MenuBarTitle.segments(grok: g, bot: b, style: .highest),
-               MenuBarTitle.segments(grok: g, bot: b, style: .both),
-               MenuBarTitle.segments(grok: 95, bot: b, style: .highest)]
-            : [MenuBarTitle.segments(grok: g, bot: b, style: .highest),
-               MenuBarTitle.segments(grok: g, bot: b, style: .both)]
-        ok = renderMenuBar(titles: titles, to: dir.appendingPathComponent("menubar\(suffix).png")) && ok
+        let gd = snapshot.timeUntilReset().map(UsageFormat.wholeDays)
+        let bd = bot?.timeUntilReset().map(UsageFormat.wholeDays)
+        let palette = Palette.standard
+        func item(_ mode: MenuBarMode, days: Bool = false, grok: Int? = nil) -> MenuBarItem {
+            let gg = grok ?? g
+            let level = mode == .logoOnly ? MenuBarLayout.logoLevel(grok: gg, bot: b) : nil
+            return MenuBarItem(segments: MenuBarLayout.segments(grok: gg, bot: b, grokDays: gd, botDays: bd, mode: mode, showDays: days),
+                               logoColor: level.map(palette.nsColor))
+        }
+        let items: [MenuBarItem] = demo
+            ? [item(.highest), item(.both), item(.highest, days: true), item(.logoOnly), item(.grokOnly, grok: 95)]
+            : [item(.highest), item(.both)]
+        ok = renderMenuBar(items: items, palette: palette, to: dir.appendingPathComponent("menubar\(suffix).png")) && ok
         print(ok ? "wrote previews to \(dir.path)" : "some previews failed")
         return ok ? 0 : 1
     }
@@ -70,12 +138,9 @@ enum PreviewRenderer {
                                planLabel: "SuperGrok Plus")
     }
 
-    private static func renderPopover(_ snapshot: UsageSnapshot, bot: GrokBotSnapshot?, botProblem: BotProblem?,
-                                      scheme: ColorScheme, to url: URL) -> Bool {
-        let store = UsageStore(notifier: UsageNotifier())
-        store.showPreview(snapshot, bot: bot, botProblem: botProblem)
-        let root = PopoverView(store: store, loginItem: LaunchAtLogin())
-            .background(scheme == .dark ? Color(white: 0.15) : Color(white: 0.965))
+    private static func renderView<V: View>(_ view: V, scheme: ColorScheme, background: Bool, to url: URL) -> Bool {
+        let root = view
+            .background(background ? (scheme == .dark ? Color(white: 0.15) : Color(white: 0.965)) : .clear)
             .environment(\.colorScheme, scheme)
         let host = NSHostingView(rootView: root)
         host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
@@ -88,6 +153,9 @@ enum PreviewRenderer {
         window.contentView = host
         window.orderFrontRegardless()
         RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        host.setFrameSize(host.fittingSize)
+        window.setContentSize(host.fittingSize)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
         host.layoutSubtreeIfNeeded()
         host.display()
 
@@ -97,36 +165,44 @@ enum PreviewRenderer {
         return write(rep, to: url)
     }
 
-    private static func renderMenuBar(titles: [[MenuBarSegment]], to url: URL) -> Bool {
+    struct MenuBarItem {
+        let segments: [MenuBarSegment]
+        let logoColor: NSColor?
+    }
+
+    private static func renderMenuBar(items: [MenuBarItem], palette: Palette, to url: URL) -> Bool {
         let scale: CGFloat = 2
         let height: CGFloat = 30
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         let neutral = NSColor.white.withAlphaComponent(0.6)
-        let items: [NSAttributedString] = titles.map { segments in
+        let titles: [NSAttributedString] = items.map { item in
             let t = NSMutableAttributedString()
-            for seg in segments {
+            for seg in item.segments {
                 t.append(NSAttributedString(string: seg.text, attributes: [
-                    .font: font, .foregroundColor: seg.level?.nsColor ?? neutral]))
+                    .font: font, .foregroundColor: seg.level.map { palette.nsColor($0) } ?? neutral]))
             }
             return t
         }
         let glyph = GrokMarkImage.template(size: 18)
         let gap: CGFloat = 28
-        let widths = items.map { 18 + $0.size().width }
-        let width = widths.reduce(0, +) + gap * CGFloat(max(0, items.count - 1)) + 32 + 120
+        let widths = titles.map { 18 + $0.size().width }
+        let width = widths.reduce(0, +) + gap * CGFloat(max(0, titles.count - 1)) + 32 + 120
 
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
             NSColor(calibratedWhite: 0.12, alpha: 1).setFill()
             NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8).fill()
-            let tinted = NSImage(size: glyph.size, flipped: false) { r in
-                glyph.draw(in: r)
-                NSColor.white.withAlphaComponent(0.92).set()
-                r.fill(using: .sourceAtop)
-                return true
+            func tinted(_ color: NSColor) -> NSImage {
+                NSImage(size: glyph.size, flipped: false) { r in
+                    glyph.draw(in: r)
+                    color.set()
+                    r.fill(using: .sourceAtop)
+                    return true
+                }
             }
             var x: CGFloat = 16
-            for (i, title) in items.enumerated() {
-                tinted.draw(in: NSRect(x: x, y: (height - 18) / 2, width: 18, height: 18))
+            for (i, title) in titles.enumerated() {
+                tinted(items[i].logoColor ?? NSColor.white.withAlphaComponent(0.92))
+                    .draw(in: NSRect(x: x, y: (height - 18) / 2, width: 18, height: 18))
                 let size = title.size()
                 title.draw(at: NSPoint(x: x + 18, y: (height - size.height) / 2))
                 x += widths[i] + gap

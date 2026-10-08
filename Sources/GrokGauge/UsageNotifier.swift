@@ -2,61 +2,79 @@ import Foundation
 import GrokGaugeCore
 import UserNotifications
 
-/// Posts one local notification per usage period when a pool crosses 80% and 90%.
+/// Posts one local notification per usage period when a pool enters the warning and critical
+/// levels. Levels follow the color boundaries unless notifications are unlinked in Settings.
 /// Grok and Grok Bot are tracked independently.
 @MainActor
 final class UsageNotifier: NSObject, UNUserNotificationCenterDelegate {
-    static let thresholds = [90, 80]   // highest first
-
     private struct Source {
         let name: String
         let periodKey: String
-        let levelKey: String
+        let rankKey: String
+        /// 0.1–0.3 stored the highest threshold sent (80 / 90) under this key.
+        let legacyLevelKey: String
     }
 
-    // Grok keeps its v0.1/v0.2 keys so an alert already sent this week isn't repeated.
     private static let grok = Source(name: "SuperGrok", periodKey: "notifications.periodKey",
-                                     levelKey: "notifications.highestThreshold")
+                                     rankKey: "notifications.levelSent",
+                                     legacyLevelKey: "notifications.highestThreshold")
     private static let grokBot = Source(name: "Grok Bot", periodKey: "notifications.grokbot.periodKey",
-                                        levelKey: "notifications.grokbot.highestThreshold")
+                                        rankKey: "notifications.grokbot.levelSent",
+                                        legacyLevelKey: "notifications.grokbot.highestThreshold")
 
     private let defaults = UserDefaults.standard
     private var center: UNUserNotificationCenter { .current() }
+
+    override init() {
+        super.init()
+        // Carry over "already alerted this period" from 0.3 so nobody gets a repeat after upgrading.
+        for s in [Self.grok, Self.grokBot] where defaults.object(forKey: s.rankKey) == nil {
+            let legacy = defaults.integer(forKey: s.legacyLevelKey)
+            defaults.set(legacy >= 90 ? 2 : legacy >= 80 ? 1 : 0, forKey: s.rankKey)
+        }
+    }
 
     func requestAuthorization() {
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
-    func evaluate(_ snapshot: UsageSnapshot) {
-        evaluate(Self.grok, percent: snapshot.percent, rounded: snapshot.roundedPercent,
+    func evaluate(_ snapshot: UsageSnapshot, thresholds: LevelThresholds) {
+        evaluate(Self.grok, rounded: snapshot.roundedPercent, thresholds: thresholds,
                  period: snapshot.periodKey, poolName: "this \(snapshot.period.label.lowercased()) pool",
                  reset: snapshot.periodEnd)
     }
 
-    func evaluate(_ snapshot: GrokBotSnapshot) {
-        evaluate(Self.grokBot, percent: snapshot.percent, rounded: snapshot.roundedPercent,
+    func evaluate(_ snapshot: GrokBotSnapshot, thresholds: LevelThresholds) {
+        evaluate(Self.grokBot, rounded: snapshot.roundedPercent, thresholds: thresholds,
                  period: snapshot.periodKey, poolName: "Grok Bot's weekly usage", reset: snapshot.nextReset)
     }
 
-    private func evaluate(_ source: Source, percent: Double, rounded: Int, period: String, poolName: String, reset: Date?) {
+    private func evaluate(_ source: Source, rounded: Int, thresholds: LevelThresholds, period: String,
+                          poolName: String, reset: Date?) {
         if defaults.string(forKey: source.periodKey) != period {
             defaults.set(period, forKey: source.periodKey)
-            defaults.set(0, forKey: source.levelKey)
+            defaults.set(0, forKey: source.rankKey)
         }
-        let alreadySent = defaults.integer(forKey: source.levelKey)
-        guard let crossed = Self.thresholds.first(where: { percent >= Double($0) }),
-              crossed > alreadySent else { return }
-        defaults.set(crossed, forKey: source.levelKey)
+        let rank: Int
+        switch thresholds.level(forRoundedPercent: rounded) {
+        case .critical: rank = 2
+        case .warning: rank = 1
+        case .normal: rank = 0
+        }
+        guard rank > defaults.integer(forKey: source.rankKey) else { return }
+        defaults.set(rank, forKey: source.rankKey)
 
         let content = UNMutableNotificationContent()
-        content.title = crossed >= 90 ? "\(source.name) usage above 90%" : "\(source.name) usage passed 80%"
+        content.title = rank == 2
+            ? "\(source.name) usage above \(thresholds.criticalAbove)%"
+            : "\(source.name) usage passed \(thresholds.warningAbove)%"
         var body = "You've used \(rounded)% of \(poolName)."
         if let reset { body += " It resets \(UsageFormat.resetDate(reset))." }
         content.body = body
         content.sound = .default
         let request = UNNotificationRequest(
-            identifier: "grokgauge.\(period).\(crossed)", content: content, trigger: nil)
+            identifier: "grokgauge.\(source.name).\(period).\(rank)", content: content, trigger: nil)
         center.add(request)
     }
 

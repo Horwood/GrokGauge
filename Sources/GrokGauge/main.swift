@@ -51,7 +51,7 @@ if arguments.contains("--help") || arguments.contains("-h") {
       GrokGauge --print-usage   Print Grok + Grok Bot usage once (never prints tokens)
       GrokGauge --json          Same, as JSON
       GrokGauge --refresh-now   Renew the Grok login now (prints expiry times only)
-      GrokGauge --render-preview DIR [--demo]   Write popover/menu bar PNGs (for docs)
+      GrokGauge --render-preview DIR [--demo]   Write dropdown, menu bar and Settings PNGs (for docs)
       GrokGauge --version
     """)
     exit(0)

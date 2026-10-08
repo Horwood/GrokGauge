@@ -6,6 +6,8 @@ public enum FetchError: Error, Equatable {
     case http(Int)
     case network(String)
     case badResponse
+    /// The reply is JSON but not shaped like the billing config GrokGauge knows ("xAI changed something").
+    case unexpectedShape
 }
 
 /// Fetches the shared weekly usage pool from the (unofficial) Grok CLI billing endpoint.
@@ -79,6 +81,8 @@ public final class BillingClient: @unchecked Sendable {
 
         do {
             return try UsageParser.parse(data, now: Date())
+        } catch let e as UsageParserError where e.isShapeChange {
+            throw FetchError.unexpectedShape
         } catch {
             throw FetchError.badResponse
         }

@@ -317,3 +317,56 @@ import Testing
         #expect(Backoff.delay(attempt: 3, cap: 60) == 60)
     }
 }
+
+@Suite struct MenuBarLayoutTests {
+    private func text(_ s: [MenuBarSegment]) -> String { s.map(\.text).joined() }
+
+    @Test func modes() {
+        let t = LevelThresholds.standard
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 86, mode: .highest, thresholds: t)) == " 86%")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 86, mode: .both)) == " G 10% · B 86%")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 86, mode: .grokOnly)) == " 10%")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 86, mode: .grokBotOnly)) == " 86%")
+        #expect(MenuBarLayout.segments(grok: 10, bot: 86, mode: .logoOnly).isEmpty)
+        #expect(MenuBarLayout.segments(grok: nil, bot: 86, mode: .grokOnly).isEmpty)
+    }
+
+    @Test func daysSuffixFollowsTheShownSource() {
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 5, grokDays: 5, botDays: 2, mode: .highest, showDays: true)) == " 10% · 5d")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 50, grokDays: 5, botDays: 2, mode: .highest, showDays: true)) == " 50% · 2d")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 50, grokDays: 5, botDays: 2, mode: .both, showDays: true)) == " G 10% · B 50% · 2d")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: 50, grokDays: 5, botDays: 2, mode: .logoOnly, showDays: true)) == " 2d")
+        #expect(text(MenuBarLayout.segments(grok: 10, bot: nil, grokDays: nil, mode: .grokOnly, showDays: true)) == " 10%")
+    }
+
+    @Test func levelsUseCustomThresholds() {
+        let t = LevelThresholds(warningAbove: 50, criticalAbove: 70)
+        #expect(MenuBarLayout.segments(grok: 60, bot: nil, mode: .grokOnly, thresholds: t).first?.level == .warning)
+        #expect(MenuBarLayout.logoLevel(grok: 60, bot: 71, thresholds: t) == .critical)
+        #expect(MenuBarLayout.logoLevel(grok: nil, bot: nil) == nil)
+        #expect(MenuBarLayout.effectiveMode(.both, hasGrokBot: false) == .grokOnly)
+        #expect(MenuBarLayout.effectiveMode(.logoOnly, hasGrokBot: false) == .logoOnly)
+    }
+}
+
+@Suite struct DiagnosticsTests {
+    @Test func reportHasNoSecrets() {
+        let r = DiagnosticsReport(
+            appVersion: "0.9.0", macOSVersion: "15.1", architecture: "arm64",
+            sources: [
+                SourceDiagnostics(name: "Grok", status: "OK", lastSuccess: Date(timeIntervalSince1970: 1_800_000_000),
+                                  lastError: "failed for someone@example.com with eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.abc",
+                                  tokenExpiresAt: Date(timeIntervalSince1970: 1_800_003_600)),
+                SourceDiagnostics(name: "Grok Bot", status: "grok|user_ABCDEF123456 at /Users/someone/Library"),
+            ],
+            settingsSummary: ["Menu bar: Higher percent"])
+        let t = r.text
+        #expect(t.contains("App: 0.9.0"))
+        #expect(t.contains("Login expires: 2027-01-15T09:00:00Z"))
+        #expect(!t.contains("@example.com"))
+        #expect(!t.contains("eyJ"))
+        #expect(!t.contains("user_ABCDEF"))
+        #expect(!t.contains("/Users/someone"))
+        #expect(t.contains("Menu bar: Higher percent"))
+    }
+}

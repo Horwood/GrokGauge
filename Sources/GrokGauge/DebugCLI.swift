@@ -27,7 +27,8 @@ enum DebugCLI {
             case .unauthorized(let code): message = "HTTP \(code): the Grok login was rejected. Run `grok login` to reconnect."
             case .http(let code): message = "HTTP \(code) from the billing endpoint."
             case .network(let m): message = "Network error: \(m)"
-            case .badResponse: message = "Unexpected response format (the unofficial endpoint may have changed)."
+            case .badResponse: message = "The billing endpoint returned something that isn't JSON."
+            case .unexpectedShape: message = "xAI changed something: the billing reply is JSON but not in the expected shape (no config or period). Not showing a number rather than guessing."
             }
             FileHandle.standardError.write(Data(("error: " + message + "\n").utf8))
             return 1

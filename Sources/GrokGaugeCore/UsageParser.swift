@@ -1,8 +1,18 @@
 import Foundation
 
 public enum UsageParserError: Error, Equatable {
+    /// The body isn't JSON at all (an HTML error page, a proxy, a truncated body).
     case notJSON
+    /// JSON, but without the `config` object the gauge is built from.
     case missingConfig
+    /// `config` is there but has no usable period end (`currentPeriod.end` / `billingPeriodEnd`).
+    case missingPeriod
+    /// Known fields came back with types GrokGauge doesn't understand.
+    case unexpectedTypes
+
+    /// True when the reply is JSON but its shape changed, i.e. xAI changed something.
+    /// Showing 0% in that case would be misleading, so callers show a distinct state instead.
+    public var isShapeChange: Bool { self != .notJSON }
 }
 
 public enum UsageParser {
@@ -17,14 +27,25 @@ public enum UsageParser {
     ]
 
     public static func parse(_ data: Data, now: Date = Date()) throws -> UsageSnapshot {
+        guard (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else {
+            throw UsageParserError.notJSON
+        }
         let envelope: BillingEnvelope
         do {
             envelope = try JSONDecoder().decode(BillingEnvelope.self, from: data)
         } catch {
-            throw UsageParserError.notJSON
+            throw UsageParserError.unexpectedTypes
         }
         guard let cfg = envelope.config else { throw UsageParserError.missingConfig }
+        try validateShape(cfg)
         return snapshot(from: cfg, now: now)
+    }
+
+    /// The "missing creditUsagePercent means 0%" rule is only safe when the rest of the
+    /// reply looks like a normal billing config. Without a period end it doesn't.
+    static func validateShape(_ cfg: BillingConfig) throws {
+        let end = (cfg.currentPeriod?.end).flatMap(ISODate.parse) ?? cfg.billingPeriodEnd.flatMap(ISODate.parse)
+        guard end != nil else { throw UsageParserError.missingPeriod }
     }
 
     public static func snapshot(from cfg: BillingConfig, now: Date = Date()) -> UsageSnapshot {
