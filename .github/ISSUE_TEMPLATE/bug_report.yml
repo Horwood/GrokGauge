@@ -1,0 +1,44 @@
+name: Bug report
+description: Something isn't working right
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **don't paste tokens, auth.json contents, or screenshots that show your email**.
+        The Diagnostics report below is safe to share: it never includes tokens, emails, account ids or paths.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you see instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the dropdown
+        2. ...
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics report
+      description: In GrokGauge, open Settings (gear button or ⌘,) › Diagnostics › Copy Report, then paste it here.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install GrokGauge?
+      options:
+        - Homebrew (brew install --cask stevencombs/tap/grokgauge)
+        - Downloaded the zip from GitHub Releases
+        - Built from source
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots (with personal info hidden), related settings, sync folder app (Google Drive, Insync, iCloud, Dropbox...).
