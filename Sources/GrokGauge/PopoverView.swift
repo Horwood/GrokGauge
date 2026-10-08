@@ -40,6 +40,9 @@ struct PopoverView: View {
                 }
             case .productBreakdown, .credits:
                 if store.snapshot != nil { out.append(.section(item.id)) }
+            case .historyPace:
+                // Hidden when both graphs are switched off (or only Grok Bot's is on and it isn't installed).
+                if settings.showGrokHistory || (settings.showGrokBotHistory && bot) { out.append(.section(item.id)) }
             default:
                 out.append(.section(item.id))
             }
@@ -90,7 +93,7 @@ struct PopoverView: View {
     private func sectionView(_ section: DropdownSection, now: Date) -> some View {
         switch section {
         case .historyPace:
-            HistoryPaceCard(store: store, history: history.history, now: now)
+            HistoryPaceCard(store: store, history: history.history, settings: settings, now: now)
         case .resetDates:
             ResetCard(grokEnd: store.snapshot?.periodEnd,
                       botEnd: store.hasGrokBot ? store.botSnapshot?.nextReset : nil,
@@ -216,8 +219,10 @@ private struct RingContent {
             let problem = store.botProblem
             return RingContent(
                 title: "Grok Bot", percent: b?.percent, isLoading: false,
-                caption: b.map { "as of \($0.readAt.formatted(date: .omitted, time: .shortened))" } ?? problem?.caption,
-                captionHelp: problem?.tooltip,
+                // Date included when the reading isn't from today ("as of Oct 7, 5:38 PM").
+                caption: b.map { "as of \(UsageFormat.readingTime($0.readAt))" } ?? problem?.caption,
+                captionHelp: problem?.tooltip
+                    ?? b.map { "Grok Bot's last reading: \(UsageFormat.resetDate($0.readAt)). Open Grok Bot to update it." },
                 captionAction: problem?.opensGrokBot == true ? { Launcher.openGrokBot() } : nil,
                 detail: b?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
         }
@@ -387,6 +392,7 @@ struct RingGauge: View {
 private struct HistoryPaceCard: View {
     @ObservedObject var store: UsageStore
     let history: UsageHistory
+    let settings: GaugeSettings
     let now: Date
 
     var body: some View {
@@ -394,14 +400,26 @@ private struct HistoryPaceCard: View {
             Text("LAST 7 DAYS & PACE")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            SourceTrend(name: "Grok", samples: history.series(.grok, now: now), current: store.snapshot?.percent,
-                        pace: grokPace, now: now)
-            if store.hasGrokBot {
-                SourceTrend(name: "Grok Bot", samples: history.series(.grokBot, now: now), current: store.botSnapshot?.percent,
-                            pace: botPace, now: now)
+            if settings.showGrokHistory {
+                SourceTrend(name: "Grok", history: history, source: .grok, current: store.snapshot?.percent,
+                            knownResets: grokResets, pace: grokPace, style: settings.graphStyle, now: now)
+            }
+            if settings.showGrokBotHistory && store.hasGrokBot {
+                SourceTrend(name: "Grok Bot", history: history, source: .grokBot, current: store.botSnapshot?.percent,
+                            knownResets: botResets, pace: botPace, style: settings.graphStyle, now: now)
             }
         }
         .card()
+    }
+
+    private var grokResets: [Date] {
+        guard let s = store.snapshot, let end = s.periodEnd else { return [] }
+        return [s.periodStart ?? Pace.weeklyStart(forReset: end)]
+    }
+
+    private var botResets: [Date] {
+        guard let end = store.botSnapshot?.nextReset else { return [] }
+        return [Pace.weeklyStart(forReset: end)]
     }
 
     private var grokPace: PaceStatus? {
@@ -418,9 +436,12 @@ private struct HistoryPaceCard: View {
 
 private struct SourceTrend: View {
     let name: String
-    let samples: [UsageSample]
+    let history: UsageHistory
+    let source: HistorySource
     let current: Double?
+    let knownResets: [Date]
     let pace: PaceStatus?
+    let style: GraphStyle
     let now: Date
     @Environment(\.palette) private var palette
 
@@ -436,20 +457,38 @@ private struct SourceTrend: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
-            if samples.count >= 2 {
-                Sparkline(samples: samples, now: now, color: palette.color(forRounded: rounded),
-                          thresholds: palette.thresholds)
-                    .frame(height: 26)
-                    .accessibilityElement()
-                    .accessibilityLabel("\(name) usage, last 7 days")
-                    .accessibilityValue(trendSummary)
-            } else {
-                Text("Collecting history… (the chart fills in over the week)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            .accessibilityElement(children: .combine)
+            switch style {
+            case .bars:
+                let days = history.daily(source, now: now, current: current, knownResets: knownResets)
+                if days.contains(where: { $0.peak != nil }) {
+                    DailyBars(days: days, sourceName: name)
+                        .frame(height: 54)
+                } else {
+                    collecting
+                }
+            case .line, .area:
+                let samples = history.series(source, now: now)
+                if samples.count >= 2 {
+                    Sparkline(samples: samples, now: now, color: palette.color(forRounded: rounded),
+                              thresholds: palette.thresholds, filled: style == .area)
+                        .frame(height: 26)
+                        .accessibilityElement()
+                        .accessibilityLabel("\(name) usage, last 7 days")
+                        .accessibilityValue(trendSummary(samples))
+                } else {
+                    collecting
+                }
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(name) history")
+    }
+
+    private var collecting: some View {
+        Text("Collecting history… (the chart fills in over the week)")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 
     private var paceColor: Color {
@@ -460,9 +499,110 @@ private struct SourceTrend: View {
         }
     }
 
-    private var trendSummary: String {
+    private func trendSummary(_ samples: [UsageSample]) -> String {
         guard let first = samples.first, let last = samples.last else { return "" }
         return "from \(Int(first.p.rounded())) to \(Int(last.p.rounded())) percent, \(samples.count) readings"
+    }
+}
+
+/// One bar per day: the highest % reached that day, tinted with its level color.
+/// Today's column is highlighted; a small mark above a bar means the weekly allowance reset that day.
+struct DailyBars: View {
+    let days: [DailyUsage]
+    var sourceName: String = ""
+    var labelHeight: CGFloat = 11
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        GeometryReader { geo in
+            let gap: CGFloat = 5
+            let count = CGFloat(max(1, days.count))
+            let colW = max(4, (geo.size.width - gap * (count - 1)) / count)
+            let barH = max(8, geo.size.height - labelHeight - 2)
+            ZStack(alignment: .topLeading) {
+                ForEach([palette.thresholds.warningAbove, palette.thresholds.criticalAbove], id: \.self) { t in
+                    Path { p in
+                        let y = barH - barH * CGFloat(t) / 100
+                        p.move(to: CGPoint(x: 0, y: y))
+                        p.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                    .stroke(Color.secondary.opacity(0.22), style: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+                }
+                HStack(alignment: .bottom, spacing: gap) {
+                    ForEach(Array(days.enumerated()), id: \.offset) { _, day in
+                        column(day, width: colW, barHeight: barH)
+                    }
+                }
+            }
+        }
+    }
+
+    private func column(_ day: DailyUsage, width: CGFloat, barHeight: CGFloat) -> some View {
+        let color = day.roundedPeak.map { palette.color(forRounded: $0) } ?? Color.secondary
+        let fraction = CGFloat(min(100, max(0, day.peak ?? 0)) / 100)
+        let h = day.peak == nil ? 0 : max(2, barHeight * fraction)
+        return VStack(spacing: 2) {
+            ZStack(alignment: .bottom) {
+                if day.peak == nil {
+                    Capsule().fill(Color.secondary.opacity(0.25)).frame(width: min(width, 10), height: 1.5)
+                } else {
+                    UnevenRoundedRectangle(topLeadingRadius: 2.5, topTrailingRadius: 2.5, style: .continuous)
+                        .fill(color.opacity(day.isToday ? 1 : 0.72))
+                        .frame(height: h)
+                        .overlay(alignment: .top) {
+                            if day.isToday {
+                                UnevenRoundedRectangle(topLeadingRadius: 2.5, topTrailingRadius: 2.5, style: .continuous)
+                                    .stroke(color, lineWidth: 1)
+                                    .frame(height: h)
+                            }
+                        }
+                }
+            }
+            .frame(width: width, height: barHeight, alignment: .bottom)
+            HStack(spacing: 1.5) {
+                if day.reset {
+                    // Subtle reset mark: the week started over on this day.
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 6.5, weight: .heavy))
+                }
+                Text(Self.weekday(day.day))
+                    .font(.system(size: 8.5, weight: day.isToday ? .bold : .regular))
+            }
+            .foregroundStyle(day.isToday ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .frame(width: width, height: labelHeight)
+            .overlay(alignment: .bottom) {
+                // Today: a short underline under the weekday (a column background read as a 100% bar).
+                if day.isToday {
+                    Capsule().fill(color).frame(width: min(width * 0.5, 14), height: 1.5).offset(y: 2)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.spokenDay(day))
+        .accessibilityValue(Self.spokenValue(day))
+        .help(Self.spokenDay(day) + ": " + Self.spokenValue(day))
+    }
+
+    static func weekday(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("EEE")
+        return f.string(from: d)
+    }
+
+    static func spokenDay(_ day: DailyUsage) -> String {
+        let f = DateFormatter()
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
+        return day.isToday ? "Today, \(f.string(from: day.day))" : f.string(from: day.day)
+    }
+
+    static func spokenValue(_ day: DailyUsage) -> String {
+        var out = day.roundedPeak.map { "Peak \($0) percent" } ?? "No reading"
+        if day.reset { out += ", weekly reset" }
+        return out
     }
 }
 
@@ -471,6 +611,8 @@ struct Sparkline: View {
     let now: Date
     let color: Color
     let thresholds: LevelThresholds
+    /// Area style: fill under the line. Line style draws the line only.
+    var filled = false
     var window: TimeInterval = 7 * 86_400
 
     var body: some View {
@@ -490,14 +632,16 @@ struct Sparkline: View {
                     }
                     .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
                 }
-                Path { p in
-                    guard let first = pts.first else { return }
-                    p.move(to: CGPoint(x: first.x, y: h))
-                    pts.forEach { p.addLine(to: $0) }
-                    p.addLine(to: CGPoint(x: pts.last!.x, y: h))
-                    p.closeSubpath()
+                if filled {
+                    Path { p in
+                        guard let first = pts.first else { return }
+                        p.move(to: CGPoint(x: first.x, y: h))
+                        pts.forEach { p.addLine(to: $0) }
+                        p.addLine(to: CGPoint(x: pts.last!.x, y: h))
+                        p.closeSubpath()
+                    }
+                    .fill(LinearGradient(colors: [color.opacity(0.5), color.opacity(0.12)], startPoint: .top, endPoint: .bottom))
                 }
-                .fill(LinearGradient(colors: [color.opacity(0.28), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
                 Path { p in
                     guard let first = pts.first else { return }
                     p.move(to: first)

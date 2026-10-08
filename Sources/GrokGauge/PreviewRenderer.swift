@@ -62,7 +62,13 @@ enum PreviewRenderer {
                     return s
                 }()),
             ]
-            for (name, s, st) in variants {
+            // The same dropdown in each history graph style.
+            let styles: [(String, GaugeSettings, UsageStore)] = GraphStyle.allCases.map { style in
+                var g = GaugeSettings()
+                g.graphStyle = style
+                return ("graph-\(style.rawValue)", g, store)
+            }
+            for (name, s, st) in variants + styles {
                 let view = PopoverView(store: st, settingsStore: SettingsStore.preview(s), history: historyStore,
                                        updates: UpdateMonitor.preview(available: nil, lastChecked: nil))
                 ok = renderView(view, scheme: .dark, background: true,
@@ -80,7 +86,7 @@ enum PreviewRenderer {
             prefsSettings = SettingsStore.preview()
         }
         let updates = demo
-            ? UpdateMonitor.preview(available: ReleaseInfo(tag: "v0.9.1", url: URL(string: "https://github.com/stevencombs/GrokGauge/releases/tag/v0.9.1")!),
+            ? UpdateMonitor.preview(available: ReleaseInfo(tag: "v0.9.2", url: URL(string: "https://github.com/stevencombs/GrokGauge/releases/tag/v0.9.2")!),
                                     lastChecked: Date().addingTimeInterval(-3 * 3600))
             : UpdateMonitor.preview(available: nil, lastChecked: Date())
         let expiry = demo ? Date().addingTimeInterval(5.5 * 3600) : store.grokTokenExpiry()

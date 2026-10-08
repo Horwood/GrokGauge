@@ -47,6 +47,31 @@ public enum RingStyle: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
+/// How the "Last 7 days" history is drawn. Applies to both the Grok and the Grok Bot graph.
+public enum GraphStyle: String, Codable, CaseIterable, Sendable, Identifiable {
+    /// One bar per day (the peak reached that day). Default since 0.9.1.
+    case bars
+    /// The 0.9.0 sparkline: every recorded reading, joined by a line.
+    case line
+    /// The same line, with the area under it filled.
+    case area
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .bars: return "Bars"
+        case .line: return "Line"
+        case .area: return "Area"
+        }
+    }
+    public var accessibilityDescription: String {
+        switch self {
+        case .bars: return "Bars, one bar per day"
+        case .line: return "Line, every reading joined by a line"
+        case .area: return "Area, the line with the area under it filled"
+        }
+    }
+}
+
 public enum ActionButtonKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case openGrok, openGrokBot, openX
     public var id: String { rawValue }
@@ -158,6 +183,10 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public var sections: [SectionItem]
     public var ringStyle: RingStyle
     public var actions: [ActionItem]
+    /// History graphs (inside the "History & pace" section).
+    public var graphStyle: GraphStyle
+    public var showGrokHistory: Bool
+    public var showGrokBotHistory: Bool
 
     // Menu bar
     public var menuBarMode: MenuBarMode
@@ -181,6 +210,9 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public init(sections: [SectionItem] = GaugeSettings.defaultSections,
                 ringStyle: RingStyle = .sideBySide,
                 actions: [ActionItem] = GaugeSettings.defaultActions,
+                graphStyle: GraphStyle = .bars,
+                showGrokHistory: Bool = true,
+                showGrokBotHistory: Bool = true,
                 menuBarMode: MenuBarMode = .highest,
                 showDaysToReset: Bool = false,
                 hideLogo: Bool = false,
@@ -195,6 +227,9 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         self.sections = Self.normalized(sections, defaults: Self.defaultSections)
         self.ringStyle = ringStyle
         self.actions = Self.normalized(actions, defaults: Self.defaultActions)
+        self.graphStyle = graphStyle
+        self.showGrokHistory = showGrokHistory
+        self.showGrokBotHistory = showGrokBotHistory
         self.menuBarMode = menuBarMode
         self.showDaysToReset = showDaysToReset
         self.hideLogo = hideLogo
@@ -221,6 +256,11 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         sections.first { $0.id == section }?.visible ?? true
     }
 
+    /// Whether the history section is drawn: its own checkbox is on and at least one graph is chosen.
+    public var showsHistorySection: Bool {
+        isVisible(.historyPace) && (showGrokHistory || showGrokBotHistory)
+    }
+
     /// Equality that ignores `modifiedAt` (used to detect real changes).
     public func sameContent(as other: GaugeSettings) -> Bool {
         var a = self, b = other
@@ -235,6 +275,9 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         sections = Self.defaultSections
         ringStyle = .sideBySide
         actions = Self.defaultActions
+        graphStyle = .bars
+        showGrokHistory = true
+        showGrokBotHistory = true
     }
 
     /// Drops unknown/duplicate ids and appends anything missing at its default position.
@@ -258,7 +301,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: missing keys fall back to defaults, unknown values are ignored)
 
     enum CodingKeys: String, CodingKey {
-        case sections, ringStyle, actions, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
+        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
              colors, notificationsLinked, notificationThresholds, refreshInterval, checkForUpdates, modifiedAt
     }
 
@@ -272,6 +315,10 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
             sections: Self.lenientList(c, .sections) ?? d.sections,
             ringStyle: value(.ringStyle, d.ringStyle),
             actions: Self.lenientList(c, .actions) ?? d.actions,
+            // Added in 0.9.1: settings saved by 0.9.0 lack these keys and get the defaults.
+            graphStyle: value(.graphStyle, d.graphStyle),
+            showGrokHistory: value(.showGrokHistory, d.showGrokHistory),
+            showGrokBotHistory: value(.showGrokBotHistory, d.showGrokBotHistory),
             menuBarMode: value(.menuBarMode, d.menuBarMode),
             showDaysToReset: value(.showDaysToReset, d.showDaysToReset),
             hideLogo: value(.hideLogo, d.hideLogo),
@@ -300,6 +347,9 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         try c.encode(sections, forKey: .sections)
         try c.encode(ringStyle, forKey: .ringStyle)
         try c.encode(actions, forKey: .actions)
+        try c.encode(graphStyle, forKey: .graphStyle)
+        try c.encode(showGrokHistory, forKey: .showGrokHistory)
+        try c.encode(showGrokBotHistory, forKey: .showGrokBotHistory)
         try c.encode(menuBarMode, forKey: .menuBarMode)
         try c.encode(showDaysToReset, forKey: .showDaysToReset)
         try c.encode(hideLogo, forKey: .hideLogo)

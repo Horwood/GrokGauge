@@ -321,3 +321,100 @@ struct MenuBarPreview: View {
         .accessibilityValue(segments.map(\.text).joined().trimmingCharacters(in: .whitespaces))
     }
 }
+
+// MARK: - Graph style picker
+
+/// Segmented tiles, each with a tiny drawing of its graph type above the label.
+struct GraphStylePicker: View {
+    @Binding var selection: GraphStyle
+    var tint: Color
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(GraphStyle.allCases) { style in
+                tile(style)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Graph style")
+    }
+
+    private func tile(_ style: GraphStyle) -> some View {
+        let selected = style == selection
+        return Button { selection = style } label: {
+            VStack(spacing: 5) {
+                GraphThumbnail(style: style, color: tint)
+                    .frame(width: 58, height: 26)
+                Text(style.title)
+                    .font(.system(size: 11, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(selected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(width: 84)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.03)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.3),
+                                  lineWidth: selected ? 2 : 0.5))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(style.accessibilityDescription)
+        .accessibilityValue(selected ? "Selected" : "")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .help(style.accessibilityDescription)
+    }
+}
+
+/// A miniature, decorative drawing of a graph style (bars, line or area).
+struct GraphThumbnail: View {
+    let style: GraphStyle
+    let color: Color
+    static let values: [CGFloat] = [0.22, 0.38, 0.3, 0.55, 0.48, 0.72, 0.86]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let v = Self.values
+            switch style {
+            case .bars:
+                let gap: CGFloat = 2.5
+                let bw = (w - gap * CGFloat(v.count - 1)) / CGFloat(v.count)
+                HStack(alignment: .bottom, spacing: gap) {
+                    ForEach(v.indices, id: \.self) { i in
+                        UnevenRoundedRectangle(topLeadingRadius: 1.5, topTrailingRadius: 1.5)
+                            .fill(color.opacity(i == v.count - 1 ? 1 : 0.7))
+                            .frame(width: bw, height: max(2, h * v[i]))
+                    }
+                }
+                .frame(width: w, height: h, alignment: .bottom)
+            case .line, .area:
+                let pts = v.indices.map { i in
+                    CGPoint(x: w * CGFloat(i) / CGFloat(v.count - 1), y: h - h * v[i])
+                }
+                ZStack {
+                    if style == .area {
+                        Path { p in
+                            p.move(to: CGPoint(x: 0, y: h))
+                            pts.forEach { p.addLine(to: $0) }
+                            p.addLine(to: CGPoint(x: w, y: h))
+                            p.closeSubpath()
+                        }
+                        .fill(color.opacity(0.35))
+                    }
+                    Path { p in
+                        p.move(to: pts[0])
+                        pts.dropFirst().forEach { p.addLine(to: $0) }
+                    }
+                    .stroke(color, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}

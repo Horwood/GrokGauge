@@ -62,6 +62,16 @@ public struct UsageHistory: Codable, Equatable, Sendable {
         samples(source).filter { $0.t >= now.addingTimeInterval(-window) && $0.t <= now.addingTimeInterval(300) }
     }
 
+    /// One entry per calendar day for the bar graph, oldest first, ending with today.
+    /// - `current`: the live reading, counted for today even if it wasn't recorded yet.
+    /// - `knownResets`: reset times the app knows (e.g. the current period's start).
+    public func daily(_ source: HistorySource, days: Int = 7, now: Date = Date(), current: Double? = nil,
+                      knownResets: [Date] = [], calendar: Calendar = .current) -> [DailyUsage] {
+        var list = series(source, now: now, window: Double(days + 1) * 86_400)
+        if let current, current.isFinite { list.append(UsageSample(t: now, p: max(0, current))) }
+        return DailyUsage.aggregate(list, days: days, now: now, knownResets: knownResets, calendar: calendar)
+    }
+
     // MARK: Disk
 
     public static var defaultURL: URL {
@@ -82,5 +92,49 @@ public struct UsageHistory: Codable, Equatable, Sendable {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .secondsSince1970
         try e.encode(self).write(to: url, options: [.atomic])
+    }
+}
+
+/// The peak usage reached on one calendar day.
+public struct DailyUsage: Equatable, Sendable {
+    /// Start of the day (in the calendar's time zone).
+    public var day: Date
+    /// Highest percent recorded that day; nil when there's no reading for the day.
+    public var peak: Double?
+    /// The weekly allowance reset during this day (the bar still shows the highest % reached that day).
+    public var reset: Bool
+    public var isToday: Bool
+
+    public init(day: Date, peak: Double?, reset: Bool, isToday: Bool) {
+        self.day = day
+        self.peak = peak
+        self.reset = reset
+        self.isToday = isToday
+    }
+
+    public var roundedPeak: Int? { peak.map { Int($0.rounded()) } }
+
+    /// Usage only ever rises within a week, so a drop of more than this many points means a reset.
+    public static let resetDrop = 1.0
+
+    public static func aggregate(_ samples: [UsageSample], days: Int, now: Date, knownResets: [Date] = [],
+                                 calendar: Calendar = .current) -> [DailyUsage] {
+        guard days > 0 else { return [] }
+        let today = calendar.startOfDay(for: now)
+        let starts: [Date] = (0..<days).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
+        let sorted = samples.filter { $0.p.isFinite }.sorted { $0.t < $1.t }
+
+        // Moments where the value fell: that's a reset (attributed to the day of the lower reading).
+        var resets = knownResets
+        for (a, b) in zip(sorted, sorted.dropFirst()) where a.p - b.p > resetDrop { resets.append(b.t) }
+
+        return starts.map { start in
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+            let inDay = sorted.filter { $0.t >= start && $0.t < end }
+            return DailyUsage(day: start,
+                              peak: inDay.map(\.p).max(),
+                              reset: resets.contains { $0 >= start && $0 < end },
+                              isToday: start == today)
+        }
     }
 }

@@ -51,9 +51,12 @@ final class HistoryStore: ObservableObject {
             let g: Double = t < grokReset
                 ? 55 + 35 * (t.timeIntervalSince(start) / grokReset.timeIntervalSince(start))
                 : grokNow * pow(t.timeIntervalSince(grokReset) / now.timeIntervalSince(grokReset), 0.9)
+            // Usage only rises within a week, so the wobble never takes a value below the previous one
+            // (a drop would read as a reset).
             let wobble = sin(Double(i) * 0.9) * 2.5
-            h.record(.grok, percent: max(0, g + wobble * 0.4), at: t)
-            h.record(.grokBot, percent: max(0, botNow * pow(f, 1.15) + wobble), at: t)
+            let previousGrok = h.grok.last.flatMap { ($0.t < grokReset) == (t < grokReset) ? $0.p : nil } ?? 0
+            h.record(.grok, percent: max(previousGrok, g + wobble * 0.4), at: t)
+            h.record(.grokBot, percent: max(h.grokBot.last?.p ?? 0, botNow * pow(f, 1.15) + wobble), at: t)
         }
         h.record(.grok, percent: grokNow, at: now)
         h.record(.grokBot, percent: botNow, at: now)

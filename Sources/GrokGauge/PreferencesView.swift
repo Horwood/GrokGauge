@@ -86,6 +86,26 @@ struct PreferencesView: View {
                                 return nil
                             })
             }
+            PrefGroup(title: "History graphs",
+                      footer: "Shown in \u{201C}Last 7 days & pace\u{201D}. Turning both graphs off hides that section; "
+                        + "its checkbox above works too. Bars show the highest % reached each day.") {
+                Toggle("Grok history", isOn: settings.showGrokHistory)
+                    .padding(.vertical, 6)
+                Divider()
+                HStack {
+                    Toggle("Grok Bot history", isOn: settings.showGrokBotHistory)
+                    if !store.hasGrokBot {
+                        Text("(Grok Bot not installed)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 6)
+                Divider()
+                PrefRow(label: "Graph style") {
+                    GraphStylePicker(selection: settings.graphStyle, tint: palette.color(.normal))
+                }
+                .padding(.vertical, 4)
+                .disabled(!settingsStore.settings.showGrokHistory && !settingsStore.settings.showGrokBotHistory)
+            }
             PrefGroup(title: "Rings") {
                 Picker("Ring style", selection: settings.ringStyle) {
                     ForEach(RingStyle.allCases) { Text($0.title).tag($0) }
@@ -473,6 +493,7 @@ enum Diagnostics {
         var summary = [
             "Menu bar: \(settings.menuBarMode.title)\(settings.showDaysToReset ? " + days" : "")\(settings.hideLogo ? ", no logo" : "")",
             "Ring style: \(settings.ringStyle.title)",
+            "History graphs: \(historyGraphSummary(settings))",
             "Levels: \(settings.thresholds.warningAbove)/\(settings.thresholds.criticalAbove)\(settings.notificationsLinked ? "" : ", alerts \(settings.notificationThresholds.warningAbove)/\(settings.notificationThresholds.criticalAbove)")",
             "Colors: \(settings.colors == .system ? "system" : settings.colors == .colorblindFriendly ? "colorblind-friendly" : "custom")",
             "Refresh: \(settings.refreshInterval.title)",
@@ -494,4 +515,11 @@ enum Diagnostics {
             ],
             settingsSummary: summary)
     }
+}
+
+/// e.g. "Bars (Grok, Grok Bot)" or "off" (for the Diagnostics settings summary).
+func historyGraphSummary(_ s: GaugeSettings) -> String {
+    let shown = [s.showGrokHistory ? "Grok" : nil, s.showGrokBotHistory ? "Grok Bot" : nil].compactMap { $0 }
+    guard s.isVisible(.historyPace), !shown.isEmpty else { return "off" }
+    return "\(s.graphStyle.title) (\(shown.joined(separator: ", ")))"
 }

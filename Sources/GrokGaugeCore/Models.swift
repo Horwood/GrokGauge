@@ -190,4 +190,16 @@ public enum UsageFormat {
         f.setLocalizedDateFormatFromTemplate("EEE MMM d jmm z")
         return f.string(from: date)
     }
+
+    /// When a cached reading was taken: just the time if it's from today ("5:38 PM"),
+    /// otherwise the date too ("Oct 7, 5:38 PM"), so an old reading never passes for a fresh one.
+    public static func readingTime(_ date: Date, now: Date = Date(), calendar: Calendar = .current,
+                                   locale: Locale = .current) -> String {
+        let f = DateFormatter()
+        f.calendar = calendar
+        f.timeZone = calendar.timeZone
+        f.locale = locale
+        f.setLocalizedDateFormatFromTemplate(calendar.isDate(date, inSameDayAs: now) ? "jmm" : "MMMd jmm")
+        return f.string(from: date)
+    }
 }
