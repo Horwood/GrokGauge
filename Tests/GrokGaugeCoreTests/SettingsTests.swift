@@ -229,6 +229,8 @@ import Testing
 
     @Test func edges() {
         #expect(Pace.project(percent: 5, periodStart: start, periodEnd: end, now: start.addingTimeInterval(600)) == .tooEarly)
+        // A busy first morning (14% after 10 h) is still too early to project.
+        #expect(Pace.project(percent: 14, periodStart: start, periodEnd: end, now: start.addingTimeInterval(10 * 3600)) == .tooEarly)
         #expect(Pace.project(percent: 100, periodStart: start, periodEnd: end, now: start.addingTimeInterval(600)) == .exhausted)
         #expect(Pace.project(percent: 0, periodStart: start, periodEnd: end, now: start.addingTimeInterval(86_400)) == .onTrack(projected: 0))
         #expect(Pace.project(percent: 10, periodStart: end, periodEnd: start, now: start) == .tooEarly)

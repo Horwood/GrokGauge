@@ -12,9 +12,10 @@ public enum PaceStatus: Equatable, Sendable {
 }
 
 public enum Pace {
-    /// Linear projection from usage since the period started.
+    /// Linear projection from usage since the period started. Waits `minimumElapsed` (12 h) first:
+    /// a few busy hours early in the week would otherwise predict running out in a day or two.
     public static func project(percent: Double, periodStart: Date, periodEnd: Date, now: Date = Date(),
-                               minimumElapsed: TimeInterval = 3 * 3600) -> PaceStatus {
+                               minimumElapsed: TimeInterval = 12 * 3600) -> PaceStatus {
         guard percent.isFinite, periodEnd > periodStart else { return .tooEarly }
         if percent >= 100 { return .exhausted }
         let elapsed = now.timeIntervalSince(periodStart)
