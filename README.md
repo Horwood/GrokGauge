@@ -75,6 +75,13 @@ Security**, or run:
 xattr -dr com.apple.quarantine /Applications/GrokGauge.app
 ```
 
+### First run
+
+1. Click the gauge in the menu bar to open the dropdown.
+2. When macOS asks, **allow notifications** so you get the 80% and 90% alerts.
+3. Turn on **Launch at login** in the dropdown if you want GrokGauge to start with your Mac.
+4. Use **Refresh now** any time; otherwise it updates itself every 15 minutes.
+
 ### Using it on several Macs
 
 Install GrokGauge and run `grok login` on each Mac. Settings are per-Mac; there's nothing to sync.
@@ -144,6 +151,10 @@ Casks/grokgauge.rb       Homebrew cask template for the tap
 ```
 
 ## Credits
+
+Created by **Steven Combs** ([retroCombs](https://www.youtube.com/@retroCombs)) and built together with
+**Grok Bot**, Steven's AI assistant, which wrote the code, tests, and docs to his spec.
+
 
 Endpoint details were cross-checked against the open-source
 [pi-grok-usage](https://github.com/apoapostolov/pi-grok-usage),
