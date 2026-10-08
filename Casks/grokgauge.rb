@@ -2,12 +2,12 @@
 # After tagging a release, set `version` and replace `sha256` with the value from
 # GrokGauge-<version>.zip.sha256 attached to that GitHub release.
 cask "grokgauge" do
-  version "0.2.0"
+  version "0.3.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/stevencombs/GrokGauge/releases/download/v#{version}/GrokGauge-#{version}.zip"
   name "GrokGauge"
-  desc "Menu bar gauge for your SuperGrok weekly usage pool"
+  desc "Menu bar gauge for SuperGrok and Grok Bot weekly usage"
   homepage "https://github.com/stevencombs/GrokGauge"
 
   depends_on macos: ">= :sonoma"

@@ -5,29 +5,39 @@
 <h1 align="center">GrokGauge</h1>
 
 <p align="center">
-  Your SuperGrok usage, at a glance, in the macOS menu bar.<br>
+  Your SuperGrok and Grok Bot usage, at a glance, in the macOS menu bar.<br>
   <sub>Native Swift · macOS 14+ · Apple silicon &amp; Intel · MIT licensed</sub>
 </p>
 
 <p align="center">
-  <img src="docs/menubar-demo.png" width="480" alt="GrokGauge in the menu bar at 42%, 86% and 95%">
+  <img src="docs/menubar-demo.png" width="480" alt="GrokGauge in the menu bar: the higher of the two percents (86%), both percents (G 42% · B 86%), and a red 95%">
 </p>
 
 > **Unofficial.** GrokGauge is a community project by [retroCombs](https://www.retrocombs.com).
-> It is not made, endorsed, or supported by xAI. "Grok" and "SuperGrok" are trademarks of xAI.
+> It is not made, endorsed, or supported by xAI, or by Anysphere, the maker of the Grok Bot app.
+> "Grok" and "SuperGrok" are trademarks of xAI. GrokGauge reads undocumented data sources that
+> can change without notice.
 
 ## What it does
 
-SuperGrok plans share **one usage pool** across Chat, Imagine, Voice, Build, and the API, and
-that pool resets **every 7 days** on your account's own schedule. GrokGauge keeps the number in
-view so you're never surprised:
+GrokGauge tracks two weekly limits side by side:
 
-- **Menu bar meter.** A small Grok-style glyph plus the percent of the pool you've used, color-coded:
-  **green** up to 80%, **orange** from 81–90%, **red** above 90%.
-- **Ring gauge dropdown.** Days until reset, a live countdown, and the exact reset day and time in your time zone.
-- **Per-product breakdown.** How much of the pool went to Chat, Imagine, Voice, Build, and API.
-- **Extra Usage Credits.** Your prepaid credit balance (and on-demand spend, if you've enabled it).
-- **Heads-up notifications** once per period when you cross 80% and 90%.
+- **Grok.** SuperGrok plans share **one usage pool** across Chat, Imagine, Voice, Build, and the
+  API. It resets **every 7 days** on your account's own schedule.
+- **Grok Bot.** If you use the [Grok Bot](https://cursor.com/bot) desktop app, its **weekly usage**
+  (the number on Grok Bot's *Settings › Usage & Billing* screen) has its own limit and its own reset time.
+
+Features:
+
+- **Menu bar meter.** A small Grok-style glyph plus a percent, color-coded **green** up to 80%,
+  **orange** from 81–90%, and **red** above 90%. By default it shows the **higher** of the two
+  numbers. Turn on **Show both percentages in menu bar** to see `G 0% · B 9%` instead, each colored separately.
+- **Two ring gauges.** Grok on the left, Grok Bot on the right, with the same colors.
+- **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
+  time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
+- **Per-product breakdown** of the Grok pool: Chat, Imagine, Voice, Build, and API.
+- **Extra Usage Credits.** Your prepaid Grok credit balance (and on-demand spend, if you've enabled it).
+- **Heads-up notifications** when Grok or Grok Bot crosses 80% and 90%, once per week for each.
 - **Refresh now**, last-updated time, and automatic refresh every 15 minutes (and after wake).
 - **Launch at login** toggle (uses macOS's built-in Login Items).
 - **Open Grok** (grok.com in your default browser) and **Open Grok Bot** (if installed) right from the menu.
@@ -37,7 +47,7 @@ view so you're never surprised:
   &nbsp;&nbsp;
   <img src="docs/popover-light-demo.png" width="300" alt="GrokGauge dropdown, light mode">
 </p>
-<p align="center"><sub>Screenshots use sample data.<!-- TODO: replace with a real menu bar screenshot --></sub></p>
+<p align="center"><sub>Screenshots use sample data (Grok 42%, Grok Bot 86%).</sub></p>
 
 ## Requirements
 
@@ -53,6 +63,8 @@ view so you're never surprised:
   the same way the CLI does, so you stay signed in without running `grok login` again. You only
   need to sign in again if xAI revokes the login (for example after a password change or
   "sign out everywhere"); the menu then shows **"Run `grok login` to reconnect."**
+- *Optional:* the **Grok Bot** desktop app, signed in. GrokGauge shows the Grok Bot ring only
+  when Grok Bot is installed.
 
 ## Install
 
@@ -89,6 +101,8 @@ Install GrokGauge and run `grok login` on each Mac. Settings are per-Mac; there'
 
 ## Privacy
 
+### Grok
+
 - Your Grok tokens **never leave your Mac** except to two xAI hosts, over HTTPS:
   - the access token goes to xAI's usage endpoint (`cli-chat-proxy.grok.com`), and
   - the refresh token goes to xAI's sign-in server (`auth.x.ai`), only when the login needs renewing.
@@ -101,6 +115,26 @@ Install GrokGauge and run `grok login` on each Mac. Settings are per-Mac; there'
 - Tokens are never logged, printed, or copied anywhere else.
 - Requests use an ephemeral session (no cookies, no cache) and refuse redirects, so tokens
   can't be forwarded to another host.
+
+### Grok Bot
+
+- GrokGauge **makes no network requests for Grok Bot** and uses **no Grok Bot token, password, or
+  Keychain item**. It never sends Grok Bot data anywhere.
+- It only **reads** two small files that Grok Bot itself writes, both inside
+  `~/Library/Application Support/Grok Bot/sand-client-persistence/`:
+  - the signed-in account marker (storage key `sand.client.slice.client-meta.account-slot`), and
+  - that account's weekly-usage cache (storage key
+    `sand.client.slice.account.<account>.weekly-usage.cache`): the percent used, the next reset
+    time, and when Grok Bot last checked.
+
+  Grok Bot names each file after its storage key (base32-encoded, plus `.blob`). Neither file
+  contains a credential.
+- GrokGauge never writes to, renames, or deletes anything in Grok Bot's folder. It doesn't touch
+  Grok Bot's login or its encrypted secrets (`sand-secrets.json` and the "Grok Bot Safe Storage"
+  Keychain item), and it never talks to Grok Bot's servers.
+
+### Both
+
 - No analytics, no telemetry, no third-party servers.
 
 ## How it works (and the fine print)
@@ -116,6 +150,23 @@ and reads `config.creditUsagePercent`, `config.currentPeriod`, `config.productUs
 balances. xAI doesn't document this endpoint and can change it at any time, which could break
 GrokGauge until it's updated. When xAI omits `creditUsagePercent` (it does right after a reset,
 since zero values are dropped), GrokGauge shows 0%.
+
+### Grok Bot
+
+The Grok Bot app checks your weekly usage with its own server and caches the result on disk (see
+[Privacy](#grok-bot)). GrokGauge re-reads that cache every 2 minutes, whenever you open the
+dropdown, and on every Grok refresh. That means:
+
+- The Grok Bot number is **as fresh as Grok Bot's last check**. The ring shows "as of 4:28 PM" so
+  you know how old it is. Grok Bot updates the cache on its own schedule, and only while it's
+  running. Opening Grok Bot's *Usage & Billing* screen is a quick way to get a fresh number.
+- If the cached reading has expired (Grok Bot keeps it for about a day) or its week has already
+  reset, the ring goes gray and says **"Open Grok Bot to update."** If Grok Bot is signed out or
+  hasn't checked yet, it says **"Open Grok Bot to reconnect."** Only the Grok Bot ring changes;
+  Grok keeps working.
+- Percentages are rounded the same way Grok Bot rounds them (anything between 0 and 1% shows as 1%).
+- Grok Bot's cache format is internal to Grok Bot and may change in a future version. If it does,
+  the ring says "Couldn't read usage" until GrokGauge is updated.
 
 ### Staying signed in
 
@@ -140,7 +191,7 @@ is just unreachable, it keeps using the current token while it's still valid and
 Want the raw numbers? Run the app binary with a debug flag. None of them print your tokens:
 
 ```sh
-/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-usage   # or --json
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-usage   # Grok + Grok Bot; or --json
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
 ```
 
@@ -171,7 +222,7 @@ certificate.
 ### Project layout
 
 ```
-Sources/GrokGaugeCore/   auth.json reading, the billing request, JSON parsing (Foundation only)
+Sources/GrokGaugeCore/   auth.json + token renewal, the billing request, the Grok Bot cache reader (Foundation only)
 Sources/GrokGauge/       menu bar app (AppKit + SwiftUI), notifications, login item, debug CLI
 Tests/                   swift-testing unit tests
 scripts/                 build-app.sh, test.sh, assets/make-icon.py

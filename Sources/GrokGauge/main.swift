@@ -44,11 +44,11 @@ if let i = arguments.firstIndex(of: "--render-preview"), i + 1 < arguments.count
 
 if arguments.contains("--help") || arguments.contains("-h") {
     print("""
-    GrokGauge \(AppInfo.version) — SuperGrok usage in your menu bar
+    GrokGauge \(AppInfo.version) — SuperGrok and Grok Bot usage in your menu bar
 
     Usage:
       GrokGauge                 Launch the menu bar app
-      GrokGauge --print-usage   Fetch once and print usage (never prints your token)
+      GrokGauge --print-usage   Print Grok + Grok Bot usage once (never prints tokens)
       GrokGauge --json          Same, as JSON
       GrokGauge --refresh-now   Renew the Grok login now (prints expiry times only)
       GrokGauge --render-preview DIR [--demo]   Write popover/menu bar PNGs (for docs)

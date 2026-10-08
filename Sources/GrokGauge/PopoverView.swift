@@ -10,10 +10,17 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 14) {
             header
 
-            if let snapshot = store.snapshot {
-                TimelineView(.periodic(from: .now, by: 30)) { context in
-                    GaugeSection(snapshot: snapshot, now: context.date)
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                VStack(spacing: 12) {
+                    RingsRow(store: store)
+                    ResetCard(grokEnd: store.snapshot?.periodEnd,
+                              botEnd: store.botSnapshot?.nextReset,
+                              labelLines: store.hasGrokBot,
+                              now: context.date)
                 }
+            }
+
+            if let snapshot = store.snapshot {
                 ProductBreakdown(products: snapshot.products)
                 CreditsCard(snapshot: snapshot)
                 if let problem = store.problem {
@@ -21,14 +28,6 @@ struct PopoverView: View {
                 }
             } else if let problem = store.problem {
                 ProblemCard(problem: problem) { store.refresh() }
-            } else {
-                HStack {
-                    Spacer()
-                    ProgressView().controlSize(.small)
-                    Text("Checking usage…").foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .frame(height: 120)
             }
 
             Divider()
@@ -107,6 +106,14 @@ struct PopoverView: View {
             }
             .toggleStyle(.switch)
             .controlSize(.mini)
+            if store.hasGrokBot {
+                Toggle(isOn: Binding(get: { store.menuBarStyle == .both },
+                                     set: { store.menuBarStyle = $0 ? .both : .highest })) {
+                    Text("Show both percentages in menu bar").font(.callout)
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+            }
             if let err = loginItem.lastError {
                 Text(err).font(.caption2).foregroundStyle(.orange)
             }
@@ -133,57 +140,168 @@ struct PopoverView: View {
 
 // MARK: - Gauge
 
-private struct GaugeSection: View {
-    let snapshot: UsageSnapshot
+private struct RingsRow: View {
+    @ObservedObject var store: UsageStore
+
+    var body: some View {
+        HStack(spacing: 0) {
+            grokRing.frame(maxWidth: .infinity)
+            if store.hasGrokBot {
+                botRing.frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private var grokRing: some View {
+        let s = store.snapshot
+        let caption: String?
+        if s != nil {
+            caption = s?.period == .weekly ? "SuperGrok weekly" : s?.period.label
+        } else if let p = store.problem {
+            caption = p.needsLogin ? "Run `grok login`" : "Can't reach Grok"
+        } else {
+            caption = nil
+        }
+        return SourceRing(title: "Grok",
+                          percent: s?.percent,
+                          isLoading: s == nil && store.problem == nil,
+                          caption: caption)
+    }
+
+    private var botRing: some View {
+        let b = store.botSnapshot
+        let problem = store.botProblem
+        return SourceRing(title: "Grok Bot",
+                          percent: b?.percent,
+                          isLoading: false,
+                          caption: b.map { "as of \($0.readAt.formatted(date: .omitted, time: .shortened))" } ?? problem?.caption,
+                          action: problem?.opensGrokBot == true ? { Launcher.openGrokBot() } : nil)
+    }
+}
+
+/// One labeled ring. `percent == nil` draws a neutral, empty ring.
+private struct SourceRing: View {
+    let title: String
+    let percent: Double?
+    let isLoading: Bool
+    let caption: String?
+    var action: (() -> Void)? = nil
+
+    private var rounded: Int? { percent.map { Int(max(0, $0).rounded()) } }
+    private var color: Color { rounded.map { UsageLevel.forPercent($0).color } ?? .gray }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                RingGauge(fraction: (percent ?? 0) / 100, color: color, lineWidth: 11)
+                if isLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    VStack(spacing: 0) {
+                        Text(rounded.map { "\($0)%" } ?? "—")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(rounded == nil ? Color.secondary : color)
+                            .contentTransition(.numericText())
+                        Text("used")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .opacity(rounded == nil ? 0 : 1)
+                    }
+                }
+            }
+            .frame(width: 104, height: 104)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(rounded.map { "\(title): \($0) percent used" } ?? "\(title): no reading")
+
+            Text(title)
+                .font(.system(.callout, design: .rounded).weight(.semibold))
+            Group {
+                if let action, let caption {
+                    Button(caption, action: action)
+                        .buttonStyle(.link)
+                } else if let caption {
+                    Text(.init(caption)).foregroundStyle(.secondary)
+                } else {
+                    Text(" ")
+                }
+            }
+            .font(.caption2)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+        }
+    }
+}
+
+/// Days to reset plus the exact reset time. One line when both pools reset together,
+/// otherwise one clearly labeled line per pool.
+private struct ResetCard: View {
+    let grokEnd: Date?
+    let botEnd: Date?
+    /// Label lines with the source name (true whenever Grok Bot is installed).
+    let labelLines: Bool
     let now: Date
 
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                RingGauge(fraction: snapshot.percent / 100, color: snapshot.level.color)
-                VStack(spacing: 0) {
-                    Text("\(snapshot.roundedPercent)%")
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(snapshot.level.color)
-                        .contentTransition(.numericText())
-                    Text("used")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("RESETS IN")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            if let g = grokEnd, let b = botEnd, abs(g.timeIntervalSince(b)) < 120 {
+                ResetLine(label: nil, end: g, now: now)
+            } else if grokEnd == nil && botEnd == nil {
+                Text("—").font(.title3.bold()).foregroundStyle(.secondary)
+            } else {
+                if let g = grokEnd {
+                    ResetLine(label: labelLines ? "Grok" : nil, end: g, now: now)
+                }
+                if grokEnd != nil && botEnd != nil {
+                    Divider()
+                }
+                if let b = botEnd {
+                    ResetLine(label: "Grok Bot", end: b, now: now)
                 }
             }
-            .frame(width: 118, height: 118)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(snapshot.roundedPercent) percent used")
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("RESETS IN")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                if let left = snapshot.timeUntilReset(now: now), let end = snapshot.periodEnd {
-                    let days = UsageFormat.wholeDays(left)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("\(days)")
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                        Text(days == 1 ? "day" : "days")
-                            .font(.system(.title3, design: .rounded).weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(UsageFormat.countdown(left))
-                        .font(.callout)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                    Text(UsageFormat.resetDate(end))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("—").font(.title.bold())
-                }
-            }
-            Spacer(minLength: 0)
         }
+        .card()
+    }
+}
+
+private struct ResetLine: View {
+    let label: String?
+    let end: Date
+    let now: Date
+
+    var body: some View {
+        let left = max(0, end.timeIntervalSince(now))
+        let days = UsageFormat.wholeDays(left)
+        HStack(alignment: .center, spacing: 8) {
+            if let label {
+                Text(label)
+                    .font(.callout.weight(.semibold))
+                    .frame(width: 62, alignment: .leading)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text("\(days)")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                Text(days == 1 ? "day" : "days")
+                    .font(.system(.callout, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(UsageFormat.countdown(left))
+                    .font(.caption)
+                    .monospacedDigit()
+                Text(UsageFormat.resetDate(end))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -240,7 +358,7 @@ private struct ProductBreakdown: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("BY PRODUCT")
+            Text("GROK BY PRODUCT")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(products) { p in

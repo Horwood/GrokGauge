@@ -8,4 +8,5 @@ enum AppInfo {
     static let grokURL = URL(string: "https://grok.com")!
     static let repoURL = URL(string: "https://github.com/stevencombs/GrokGauge")!
     static let refreshInterval: TimeInterval = 15 * 60
+    static let botRefreshInterval: TimeInterval = 2 * 60
 }

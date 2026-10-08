@@ -4,10 +4,17 @@ import GrokGaugeCore
 /// `GrokGauge --print-usage`: one fetch, human-readable output. The token is never printed.
 enum DebugCLI {
     static func printUsage(json: Bool) async -> Int32 {
+        let botResult = Result { try GrokBotUsageReader.read() }
+        let grokCode = await printGrok(json: json, bot: botResult)
+        if !json { printBot(botResult) }
+        return grokCode
+    }
+
+    private static func printGrok(json: Bool, bot: Result<GrokBotSnapshot, Error>) async -> Int32 {
         let client = BillingClient(appVersion: AppInfo.version)
         do {
             let s = try await client.fetch()
-            if json { printJSON(s) } else { printText(s) }
+            if json { printJSON(s, bot: bot) } else { printText(s) }
             return 0
         } catch let e as FetchError {
             let message: String
@@ -81,7 +88,42 @@ enum DebugCLI {
         print(lines.joined(separator: "\n"))
     }
 
-    private static func printJSON(_ s: UsageSnapshot) {
+    private static func printBot(_ result: Result<GrokBotSnapshot, Error>) {
+        var lines = ["", "Grok Bot (read from \(GrokBotUsageReader.persistenceDirectory().path), no network):"]
+        switch result {
+        case .success(let b):
+            lines.append(contentsOf: botLines(b))
+        case .failure(let e):
+            switch e as? GrokBotUsageError {
+            case .notInstalled?: lines.append("  Not installed (no \(GrokBotUsageReader.dataDirectory.path)).")
+            case .noReading?: lines.append("  No cached reading for the signed-in account. Open Grok Bot to reconnect.")
+            case .unavailable?: lines.append("  Grok Bot reports no personal weekly limit.")
+            case .stale(let b)?:
+                lines.append("  STALE (cache expired or the week already reset). Open Grok Bot to update. Last reading:")
+                lines.append(contentsOf: botLines(b))
+            case .unrecognized?, nil: lines.append("  Couldn't understand Grok Bot's usage cache (format changed?).")
+            }
+        }
+        print(lines.joined(separator: "\n"))
+    }
+
+    private static func botLines(_ b: GrokBotSnapshot) -> [String] {
+        var lines = ["  Usage:      \(b.roundedPercent)% (\(String(format: "%.2f", b.percent))%)  level=\(b.level.rawValue)"]
+        if let end = b.nextReset {
+            lines.append("  Resets:     \(UsageFormat.resetDate(end)) | \(iso(end))")
+            let left = b.timeUntilReset() ?? 0
+            lines.append("  Time left:  \(UsageFormat.countdown(left)) (\(UsageFormat.wholeDays(left)) whole days)")
+        }
+        if let plan = b.planLabel { lines.append("  Plan:       \(plan)") }
+        if let used = b.onDemandUsedCents, let limit = b.onDemandLimitCents {
+            lines.append("  On-demand:  \(UsageFormat.dollars(fromCents: used)) of \(UsageFormat.dollars(fromCents: limit))")
+        }
+        lines.append("  Read by Grok Bot: \(UsageFormat.resetDate(b.readAt))")
+        if let exp = b.expiresAt { lines.append("  Cache expires:    \(UsageFormat.resetDate(exp))") }
+        return lines
+    }
+
+    private static func printJSON(_ s: UsageSnapshot, bot: Result<GrokBotSnapshot, Error>) {
         var obj: [String: Any] = [
             "percent": s.percent,
             "roundedPercent": s.roundedPercent,
@@ -96,10 +138,29 @@ enum DebugCLI {
         ]
         if let start = s.periodStart { obj["periodStart"] = iso(start) }
         if let end = s.periodEnd { obj["periodEnd"] = iso(end) }
+        switch bot {
+        case .success(let b):
+            obj["grokBot"] = botJSON(b, status: "ok")
+        case .failure(let e):
+            if case .stale(let b)? = e as? GrokBotUsageError {
+                obj["grokBot"] = botJSON(b, status: "stale")
+            } else {
+                obj["grokBot"] = ["status": String(describing: e)]
+            }
+        }
         if let data = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
            let text = String(data: data, encoding: .utf8) {
             print(text)
         }
+    }
+
+    private static func botJSON(_ b: GrokBotSnapshot, status: String) -> [String: Any] {
+        var o: [String: Any] = ["status": status, "percent": b.percent, "roundedPercent": b.roundedPercent,
+                                "level": b.level.rawValue, "readAt": iso(b.readAt)]
+        if let end = b.nextReset { o["nextReset"] = iso(end) }
+        if let exp = b.expiresAt { o["expiresAt"] = iso(exp) }
+        if let plan = b.planLabel { o["planLabel"] = plan }
+        return o
     }
 
     private static func iso(_ d: Date) -> String {

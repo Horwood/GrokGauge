@@ -65,33 +65,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusItem() {
         guard let button = statusItem?.button else { return }
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
-        let title: String
-        let color: NSColor
-        let tooltip: String
+        let grok = store.snapshot?.roundedPercent
+        let bot = store.botSnapshot?.roundedPercent
+        // "Both" only makes sense when Grok Bot is installed.
+        let style: MenuBarStyle = store.hasGrokBot ? store.menuBarStyle : .highest
+        var segments = MenuBarTitle.segments(grok: grok, bot: bot, style: style)
 
-        if let s = store.snapshot {
-            title = " \(s.roundedPercent)%"
-            color = s.level.nsColor
-            var tip = "SuperGrok: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used"
-            if let left = s.timeUntilReset() { tip += "\nResets in \(UsageFormat.countdown(left))" }
-            if let p = store.problem { tip += "\n⚠︎ \(p.title)" }
-            tooltip = tip
-        } else if let p = store.problem {
-            title = p.needsLogin ? " login" : " –"
-            color = .secondaryLabelColor
-            tooltip = "GrokGauge: \(p.title)"
-        } else {
-            title = " …"
-            color = .secondaryLabelColor
-            tooltip = "GrokGauge: loading"
+        if segments.isEmpty {
+            let text: String
+            if let p = store.problem { text = p.needsLogin ? " login" : " –" } else { text = " …" }
+            segments = [MenuBarSegment(text: text, level: nil)]
         }
 
-        button.attributedTitle = NSAttributedString(string: title, attributes: [
-            .font: font,
-            .foregroundColor: color,
-        ])
-        button.toolTip = tooltip
-        button.setAccessibilityValue(title.trimmingCharacters(in: .whitespaces))
+        let title = NSMutableAttributedString()
+        for seg in segments {
+            title.append(NSAttributedString(string: seg.text, attributes: [
+                .font: font,
+                .foregroundColor: seg.level?.nsColor ?? NSColor.secondaryLabelColor,
+            ]))
+        }
+        button.attributedTitle = title
+        button.toolTip = tooltip()
+        button.setAccessibilityValue(title.string.trimmingCharacters(in: .whitespaces))
+    }
+
+    private func tooltip() -> String {
+        var lines: [String] = []
+        if let s = store.snapshot {
+            var line = "Grok: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used"
+            if let left = s.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
+            lines.append(line)
+            if let p = store.problem { lines.append("⚠︎ \(p.title)") }
+        } else if let p = store.problem {
+            lines.append("Grok: \(p.title)")
+        } else {
+            lines.append("Grok: loading")
+        }
+        if let b = store.botSnapshot {
+            var line = "Grok Bot: \(b.roundedPercent)% of weekly usage"
+            if let left = b.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
+            lines.append(line)
+        } else if let p = store.botProblem, p != .notInstalled {
+            lines.append("Grok Bot: \(p.tooltip)")
+        }
+        return lines.joined(separator: "\n")
     }
 
     @objc private func togglePopover(_ sender: Any?) {
