@@ -11,6 +11,8 @@ enum AppInfo {
     static let youTubeURL = URL(string: "https://www.youtube.com/@retroCombs-Tech")!
     static let contactEmail = "retroCombs@icloud.com"
     static let contactURL = URL(string: "mailto:retroCombs@icloud.com")!
+    /// Tips (PayPal.Me). Opens in the browser; GrokGauge sends nothing.
+    static let tipURL = URL(string: "https://paypal.me/stevencombs")!
 
     /// The retroCombs logo bundled in Contents/Resources (nil when running outside the .app).
     static var makerLogo: NSImage? {

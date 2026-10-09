@@ -3,7 +3,7 @@ import GrokGaugeCore
 import SwiftUI
 
 enum PrefsTab: String, CaseIterable, Identifiable {
-    case layout, menuBar, colors, sync, diagnostics, about
+    case layout, menuBar, colors, whatsNew, sync, diagnostics, about
     var id: String { rawValue }
 
     var title: String {
@@ -11,6 +11,7 @@ enum PrefsTab: String, CaseIterable, Identifiable {
         case .layout: return "Layout"
         case .menuBar: return "Menu Bar"
         case .colors: return "Colors & Alerts"
+        case .whatsNew: return "What's New"
         case .sync: return "Sync"
         case .diagnostics: return "Diagnostics"
         case .about: return "About"
@@ -22,6 +23,7 @@ enum PrefsTab: String, CaseIterable, Identifiable {
         case .layout: return "rectangle.3.group"
         case .menuBar: return "menubar.rectangle"
         case .colors: return "paintpalette"
+        case .whatsNew: return "newspaper"
         case .sync: return "arrow.triangle.2.circlepath"
         case .diagnostics: return "stethoscope"
         case .about: return "info.circle"
@@ -35,6 +37,7 @@ struct PreferencesView: View {
     @ObservedObject var updates: UpdateMonitor
     @ObservedObject var loginItem: LaunchAtLogin
     @ObservedObject var hotKeys: HotKeyCenter
+    @ObservedObject var whatsNew: WhatsNewStore
     @ViewState var tab: PrefsTab = .layout
     /// false when rendering previews: lays everything out at full height instead of scrolling.
     var scrollable = true
@@ -64,8 +67,9 @@ struct PreferencesView: View {
             case .layout: layoutTab
             case .menuBar: menuBarTab
             case .colors: colorsTab
+            case .whatsNew: WhatsNewPrefs(settings: settings, store: whatsNew)
             case .sync: syncTab
-            case .diagnostics: DiagnosticsTab(store: store, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
+            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
             case .about: aboutTab
             }
         }
@@ -395,14 +399,14 @@ private struct TabBar: View {
     @Binding var selection: PrefsTab
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             ForEach(PrefsTab.allCases) { t in
                 Button { selection = t } label: {
                     VStack(spacing: 3) {
                         Image(systemName: t.symbol).font(.system(size: 17, weight: .regular)).frame(height: 20)
                         Text(t.title).font(.system(size: 11))
                     }
-                    .frame(width: 88, height: 46)
+                    .frame(width: 80, height: 46)
                     .foregroundStyle(selection == t ? Color.accentColor : Color.secondary)
                     .background(selection == t ? AnyShapeStyle(.fill.secondary) : AnyShapeStyle(Color.clear),
                                 in: RoundedRectangle(cornerRadius: 7, style: .continuous))
@@ -422,15 +426,17 @@ private struct TabBar: View {
 
 struct DiagnosticsTab: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var whatsNew: WhatsNewStore
     let settings: GaugeSettings
     let tokenExpiry: () -> Date?
     @ViewState var expiry: Date? = nil
     @ViewState var copied = false
 
     var body: some View {
-        let report = Diagnostics.report(store: store, settings: settings, tokenExpiry: expiry)
+        let report = Diagnostics.report(store: store, whatsNew: whatsNew, settings: settings, tokenExpiry: expiry)
+        let news = Set(NewsSource.allCases.map(\.title))
         Group {
-            ForEach(report.sources, id: \.name) { s in
+            ForEach(report.sources.filter { !news.contains($0.name) }, id: \.name) { s in
                 PrefGroup(title: s.name) {
                     PrefRow(label: "Status") { Text(s.status).foregroundStyle(.secondary) }
                     Divider()
@@ -453,6 +459,15 @@ struct DiagnosticsTab: View {
                     }
                 }
             }
+            PrefGroup(title: "What's new from xAI", footer: "Public pages only, no login. Failed checks retry after 5 min, 10, 20 … up to the check interval.") {
+                let rows = report.sources.filter { news.contains($0.name) }
+                ForEach(Array(rows.enumerated()), id: \.element.name) { i, s in
+                    if i > 0 { Divider() }
+                    PrefRow(label: s.name, detail: newsDetail(s)) {
+                        Text(s.status).foregroundStyle(.secondary).multilineTextAlignment(.trailing).lineLimit(2)
+                    }
+                }
+            }
             PrefGroup(title: "This Mac", footer: "The report never includes tokens, emails, account ids, or file paths.") {
                 PrefRow(label: "GrokGauge") { Text(report.appVersion).foregroundStyle(.secondary) }
                 Divider()
@@ -470,6 +485,15 @@ struct DiagnosticsTab: View {
         .onAppear { expiry = tokenExpiry() }
     }
 
+    private func newsDetail(_ s: SourceDiagnostics) -> String? {
+        var parts: [String] = []
+        if let d = s.lastSuccess { parts.append("Checked \(Self.time(d))") }
+        if let e = s.lastError, let at = s.lastErrorAt, at > (s.lastSuccess ?? .distantPast) {
+            parts.append("Error: \(e) · \(Self.time(at))")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     static func time(_ d: Date?) -> String {
         guard let d else { return "—" }
         return d.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
@@ -478,7 +502,7 @@ struct DiagnosticsTab: View {
 
 enum Diagnostics {
     @MainActor
-    static func report(store: UsageStore, settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
+    static func report(store: UsageStore, whatsNew: WhatsNewStore? = nil, settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
         let grokStatus: String
         if let p = store.problem { grokStatus = p.title } else if store.snapshot != nil {
             grokStatus = store.snapshot?.percentInferred == true ? "OK (percent inferred as 0)" : "OK"
@@ -500,6 +524,7 @@ enum Diagnostics {
             "Refresh: \(settings.refreshInterval.title)",
             "Shortcut: \(settings.hotKey.enabled ? settings.hotKey.display : "off")",
             "Update check: \(settings.checkForUpdates ? "on" : "off")",
+            "What's new: \(settings.showsWhatsNewSection ? "shown" : "hidden"), \(settings.whatsNew.interval.rawValue)h, notify \(settings.whatsNew.notify ? "on" : "off")",
         ]
         if let next = store.nextRetry { summary.append("Next retry: \(DiagnosticsReport.stamp(next))") }
         return DiagnosticsReport(
@@ -513,7 +538,7 @@ enum Diagnostics {
                 SourceDiagnostics(name: "Grok Bot", status: store.hasGrokBot ? botStatus : "Not installed",
                                   lastSuccess: store.botLastSuccess,
                                   lastError: store.botLastError?.message, lastErrorAt: store.botLastError?.at),
-            ],
+            ] + (whatsNew?.diagnostics() ?? []),
             settingsSummary: summary)
     }
 }
@@ -562,6 +587,15 @@ private struct MakerCard: View {
                 .buttonStyle(YouTubeButtonStyle())
                 .help(AppInfo.youTubeURL.absoluteString)
                 .accessibilityLabel("Open the retroCombs-Tech YouTube channel")
+                Button {
+                    NSWorkspace.shared.open(AppInfo.tipURL)
+                } label: {
+                    Label("Support GrokGauge · Tip via PayPal", systemImage: "heart.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(TipButtonStyle())
+                .help(AppInfo.tipURL.absoluteString)
+                .accessibilityLabel("Support GrokGauge: tip via PayPal")
                 Link(destination: AppInfo.contactURL) {
                     Label("Contact: \(AppInfo.contactEmail)", systemImage: "envelope")
                         .font(.system(size: 12))
@@ -575,6 +609,20 @@ private struct MakerCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.fill.quinary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.separator.opacity(0.6), lineWidth: 0.5))
+    }
+}
+
+/// PayPal-blue capsule, same shape as the YouTube button but quieter.
+private struct TipButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color(red: 0.0, green: 0.19, blue: 0.53)
+                .opacity(configuration.isPressed ? 0.75 : 1)))
+            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+            .contentShape(Capsule())
     }
 }
 

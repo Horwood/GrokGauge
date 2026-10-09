@@ -7,6 +7,7 @@ struct PopoverView: View {
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var history: HistoryStore
     @ObservedObject var updates: UpdateMonitor
+    @ObservedObject var whatsNew: WhatsNewStore
     var openPreferences: () -> Void = {}
 
     private var settings: GaugeSettings { settingsStore.settings }
@@ -43,6 +44,8 @@ struct PopoverView: View {
             case .historyPace:
                 // Hidden when both graphs are switched off (or only Grok Bot's is on and it isn't installed).
                 if settings.showGrokHistory || (settings.showGrokBotHistory && bot) { out.append(.section(item.id)) }
+            case .whatsNew:
+                if settings.showsWhatsNewSection { out.append(.section(item.id)) }
             default:
                 out.append(.section(item.id))
             }
@@ -103,6 +106,8 @@ struct PopoverView: View {
             if let s = store.snapshot { ProductBreakdown(products: s.products, level: s.roundedPercent) }
         case .credits:
             if let s = store.snapshot { CreditsCard(snapshot: s) }
+        case .whatsNew:
+            WhatsNewCard(store: whatsNew, settings: settings.whatsNew, now: now)
         case .refreshRow:
             RefreshRow(store: store, now: now)
         case .actions:
@@ -157,6 +162,11 @@ struct PopoverView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                 Spacer()
+                Button("Support GrokGauge…") { NSWorkspace.shared.open(AppInfo.tipURL) }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help("Tip via PayPal (paypal.me/stevencombs)")
                 Button("Quit GrokGauge") { NSApp.terminate(nil) }
                     .buttonStyle(.borderless)
                     .font(.caption)

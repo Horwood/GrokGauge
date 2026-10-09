@@ -4,7 +4,7 @@ import Foundation
 
 /// The sections of the dropdown, in their default order.
 public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiable {
-    case grokRing, grokBotRing, historyPace, resetDates, productBreakdown, credits, refreshRow, actions
+    case grokRing, grokBotRing, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
 
     public var id: String { rawValue }
 
@@ -16,6 +16,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         case .resetDates: return "Reset dates"
         case .productBreakdown: return "Grok by product"
         case .credits: return "Extra Usage Credits"
+        case .whatsNew: return "What's new from xAI"
         case .refreshRow: return "Updated & Refresh row"
         case .actions: return "Action buttons"
         }
@@ -29,6 +30,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         case .resetDates: return "calendar.badge.clock"
         case .productBreakdown: return "chart.bar.fill"
         case .credits: return "creditcard"
+        case .whatsNew: return "newspaper"
         case .refreshRow: return "arrow.clockwise"
         case .actions: return "square.grid.2x2"
         }
@@ -69,6 +71,82 @@ public enum GraphStyle: String, Codable, CaseIterable, Sendable, Identifiable {
         case .line: return "Line, every reading joined by a line"
         case .area: return "Area, the line with the area under it filled"
         }
+    }
+}
+
+/// How often What's new checks the web sources (the Grok CLI pointer is checked every 2 hours).
+public enum WhatsNewInterval: Int, Codable, CaseIterable, Sendable, Identifiable {
+    case six = 6, twelve = 12, day = 24
+    public var id: Int { rawValue }
+    public var seconds: TimeInterval { TimeInterval(rawValue) * 3600 }
+    public var title: String { self == .day ? "Every day" : "Every \(rawValue) hours" }
+}
+
+/// "What's new from xAI" options. Synced with the other settings; the read/unread list is not.
+public struct WhatsNewSettings: Codable, Equatable, Sendable {
+    public var news: Bool
+    public var releaseNotes: Bool
+    public var grokCLI: Bool
+    public var grokApps: Bool
+    public var grokBotMac: Bool
+    /// One summary notification per check with new items. Off by default.
+    public var notify: Bool
+    public var interval: WhatsNewInterval
+
+    public static let cliInterval: TimeInterval = 2 * 3600
+    public static let standard = WhatsNewSettings()
+
+    public init(news: Bool = true, releaseNotes: Bool = true, grokCLI: Bool = true, grokApps: Bool = true,
+                grokBotMac: Bool = true, notify: Bool = false, interval: WhatsNewInterval = .six) {
+        self.news = news
+        self.releaseNotes = releaseNotes
+        self.grokCLI = grokCLI
+        self.grokApps = grokApps
+        self.grokBotMac = grokBotMac
+        self.notify = notify
+        self.interval = interval
+    }
+
+    public func isOn(_ s: NewsSource) -> Bool {
+        switch s {
+        case .news: return news
+        case .releaseNotes: return releaseNotes
+        case .grokCLI: return grokCLI
+        case .grokApps: return grokApps
+        case .grokBotMac: return grokBotMac
+        }
+    }
+
+    public mutating func set(_ s: NewsSource, _ on: Bool) {
+        switch s {
+        case .news: news = on
+        case .releaseNotes: releaseNotes = on
+        case .grokCLI: grokCLI = on
+        case .grokApps: grokApps = on
+        case .grokBotMac: grokBotMac = on
+        }
+    }
+
+    public var enabled: Set<NewsSource> { Set(NewsSource.allCases.filter(isOn)) }
+
+    /// Check interval for one source.
+    public func interval(for s: NewsSource) -> TimeInterval {
+        switch s {
+        case .grokCLI: return Self.cliInterval
+        case .grokBotMac: return 15 * 60          // a local file read
+        default: return interval.seconds
+        }
+    }
+
+    enum CodingKeys: String, CodingKey { case news, releaseNotes, grokCLI, grokApps, grokBotMac, notify, interval }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = WhatsNewSettings()
+        func v<T: Decodable>(_ k: CodingKeys, _ f: T) -> T { (try? c.decodeIfPresent(T.self, forKey: k)) ?? f }
+        self.init(news: v(.news, d.news), releaseNotes: v(.releaseNotes, d.releaseNotes), grokCLI: v(.grokCLI, d.grokCLI),
+                  grokApps: v(.grokApps, d.grokApps), grokBotMac: v(.grokBotMac, d.grokBotMac),
+                  notify: v(.notify, d.notify), interval: v(.interval, d.interval))
     }
 }
 
@@ -187,6 +265,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public var graphStyle: GraphStyle
     public var showGrokHistory: Bool
     public var showGrokBotHistory: Bool
+    public var whatsNew: WhatsNewSettings
 
     // Menu bar
     public var menuBarMode: MenuBarMode
@@ -213,6 +292,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
                 graphStyle: GraphStyle = .bars,
                 showGrokHistory: Bool = true,
                 showGrokBotHistory: Bool = true,
+                whatsNew: WhatsNewSettings = .standard,
                 menuBarMode: MenuBarMode = .highest,
                 showDaysToReset: Bool = false,
                 hideLogo: Bool = false,
@@ -230,6 +310,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         self.graphStyle = graphStyle
         self.showGrokHistory = showGrokHistory
         self.showGrokBotHistory = showGrokBotHistory
+        self.whatsNew = whatsNew
         self.menuBarMode = menuBarMode
         self.showDaysToReset = showDaysToReset
         self.hideLogo = hideLogo
@@ -254,6 +335,11 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
 
     public func isVisible(_ section: DropdownSection) -> Bool {
         sections.first { $0.id == section }?.visible ?? true
+    }
+
+    /// Whether the What's new section is drawn: its checkbox is on and at least one source is chosen.
+    public var showsWhatsNewSection: Bool {
+        isVisible(.whatsNew) && !whatsNew.enabled.isEmpty
     }
 
     /// Whether the history section is drawn: its own checkbox is on and at least one graph is chosen.
@@ -301,7 +387,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: missing keys fall back to defaults, unknown values are ignored)
 
     enum CodingKeys: String, CodingKey {
-        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
+        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, whatsNew, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
              colors, notificationsLinked, notificationThresholds, refreshInterval, checkForUpdates, modifiedAt
     }
 
@@ -319,6 +405,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
             graphStyle: value(.graphStyle, d.graphStyle),
             showGrokHistory: value(.showGrokHistory, d.showGrokHistory),
             showGrokBotHistory: value(.showGrokBotHistory, d.showGrokBotHistory),
+            whatsNew: value(.whatsNew, d.whatsNew),
             menuBarMode: value(.menuBarMode, d.menuBarMode),
             showDaysToReset: value(.showDaysToReset, d.showDaysToReset),
             hideLogo: value(.hideLogo, d.hideLogo),
@@ -350,6 +437,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         try c.encode(graphStyle, forKey: .graphStyle)
         try c.encode(showGrokHistory, forKey: .showGrokHistory)
         try c.encode(showGrokBotHistory, forKey: .showGrokBotHistory)
+        try c.encode(whatsNew, forKey: .whatsNew)
         try c.encode(menuBarMode, forKey: .menuBarMode)
         try c.encode(showDaysToReset, forKey: .showDaysToReset)
         try c.encode(hideLogo, forKey: .hideLogo)

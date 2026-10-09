@@ -3,6 +3,22 @@
 All notable changes to GrokGauge. Versions follow [Semantic Versioning](https://semver.org/);
 dates are when the version was built.
 
+## [Unreleased]
+
+### Added
+- **What's new from xAI** section in the dropdown: the 4 newest items from xAI news (x.ai sitemap), the API
+  release notes (docs.x.ai), Grok CLI updates (x.ai/cli/stable vs. the installed CLI, with the `grok update`
+  command and a Copy button; GrokGauge never runs it), the Grok and Grok Bot iPhone apps (Apple's public
+  lookup) and Grok Bot for Mac (its installed version, with Open). Unread dots, **Mark all read**, links to
+  @xai and @grok on X. The first check marks everything already out as read. No login or API key.
+- Settings › **What's New** tab: show the section, per-source switches, check interval (6/12/24 h; Grok CLI
+  every 2 h), optional notifications (off by default, one summary per check), Check Now, Mark All Read.
+  Choices sync with your other settings; read marks stay on this Mac.
+- Settings › Diagnostics lists each What's new source with its status, last check and last error.
+- **Support GrokGauge:** a Tip via PayPal button in Settings › About, a **Support GrokGauge…** link in the
+  dropdown footer and the app menu, a PayPal badge in the README, and `.github/FUNDING.yml` (GitHub's
+  Sponsor button).
+
 ## [0.9.1] - 2026-10-08
 
 ### Fixed

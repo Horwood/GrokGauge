@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var store = UsageStore(notifier: notifier, history: history) { [unowned self] in
         self.settingsStore.settings
     }
+    private lazy var whatsNew = WhatsNewStore(
+        settings: { [unowned self] in self.settingsStore.settings.whatsNew },
+        notify: { [unowned self] items in self.notifier.postWhatsNew(items) })
     private let loginItem = LaunchAtLogin()
     private var preferences: PreferencesWindowController?
     private var cancellables = Set<AnyCancellable>()
@@ -30,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.setAccessibilityLabel("GrokGauge")
         }
 
-        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates) { [weak self] in
+        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew) { [weak self] in
             self?.openPreferences()
         }
         let host = NSHostingController(rootView: root)
@@ -41,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         preferences = PreferencesWindowController { [unowned self] in
             PreferencesView(settingsStore: settingsStore, store: store, updates: updates, loginItem: loginItem,
-                            hotKeys: HotKeyCenter.shared, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
+                            hotKeys: HotKeyCenter.shared, whatsNew: whatsNew, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
         }
         MainMenu.install(target: self, settingsAction: #selector(openPreferencesAction(_:)))
 
@@ -65,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         apply(settingsStore.settings)
         updateStatusItem()
         store.start()
+        whatsNew.start()
     }
 
     /// Applies settings that drive non-SwiftUI parts: timers, the shortcut, the update check.
@@ -79,6 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if old?.checkForUpdates != s.checkForUpdates {
             updates.setEnabled(s.checkForUpdates)
+        }
+        // A source switched on (or a shorter interval) after launch: check what's now due.
+        if let old, old.whatsNew != s.whatsNew || old.showsWhatsNewSection != s.showsWhatsNewSection {
+            whatsNew.checkDue()
         }
     }
 

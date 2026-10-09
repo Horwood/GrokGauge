@@ -37,6 +37,13 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
 
 /// An accessory app has no visible menu bar, but a main menu still provides the standard
 /// key equivalents (⌘W, ⌘Q, ⌘, and copy/paste in text fields).
+/// Opens the PayPal tip page from the app menu.
+@MainActor
+final class SupportTarget: NSObject {
+    static let shared = SupportTarget()
+    @objc func openSupport(_ sender: Any?) { NSWorkspace.shared.open(AppInfo.tipURL) }
+}
+
 enum MainMenu {
     @MainActor
     static func install(target: AnyObject, settingsAction: Selector) {
@@ -47,6 +54,9 @@ enum MainMenu {
         let settings = NSMenuItem(title: "Settings…", action: settingsAction, keyEquivalent: ",")
         settings.target = target
         app.addItem(settings)
+        let support = NSMenuItem(title: "Support GrokGauge…", action: #selector(SupportTarget.openSupport(_:)), keyEquivalent: "")
+        support.target = SupportTarget.shared
+        app.addItem(support)
         app.addItem(.separator())
         app.addItem(NSMenuItem(title: "Quit GrokGauge", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appItem.submenu = app

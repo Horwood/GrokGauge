@@ -30,13 +30,14 @@ enum PreviewRenderer {
         let store = UsageStore(notifier: UsageNotifier())
         store.showPreview(snapshot, bot: bot, botProblem: botProblem)
         let settings = SettingsStore.preview()
+        let whatsNew = demo ? WhatsNewStore.preview(WhatsNewStore.demoState()) : WhatsNewStore.savedPreview()
         let suffix = demo ? "-demo" : ""
         var ok = true
 
         for scheme in [ColorScheme.dark, .light] {
             let name = scheme == .dark ? "dark" : "light"
             let view = PopoverView(store: store, settingsStore: settings, history: historyStore,
-                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil))
+                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew)
             ok = renderView(view, scheme: scheme, background: true,
                             to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
@@ -53,7 +54,14 @@ enum PreviewRenderer {
                 if [.productBreakdown, .credits].contains(i.id) { i.visible = false }
                 return i
             }
+            var news = GaugeSettings()
+            news.sections = news.sections.map { item in
+                var i = item
+                if [.historyPace, .resetDates, .productBreakdown, .credits].contains(i.id) { i.visible = false }
+                return i
+            }
             let variants: [(String, GaugeSettings, UsageStore)] = [
+                ("whatsnew", news, store),
                 ("stacked-colorblind", stacked, store),
                 ("combined-compact", combined, store),
                 ("changed-shape", GaugeSettings(), {
@@ -70,7 +78,7 @@ enum PreviewRenderer {
             }
             for (name, s, st) in variants + styles {
                 let view = PopoverView(store: st, settingsStore: SettingsStore.preview(s), history: historyStore,
-                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil))
+                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew)
                 ok = renderView(view, scheme: .dark, background: true,
                                 to: dir.appendingPathComponent("popover-\(name)-dark-demo.png")) && ok
             }
@@ -92,13 +100,13 @@ enum PreviewRenderer {
         let expiry = demo ? Date().addingTimeInterval(5.5 * 3600) : store.grokTokenExpiry()
         for tab in PrefsTab.allCases {
             let view = PreferencesView(settingsStore: prefsSettings, store: store, updates: updates,
-                                       loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared,
+                                       loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared, whatsNew: whatsNew,
                                        tab: tab, scrollable: false, tokenExpiry: { expiry })
             ok = renderView(view, scheme: .dark, background: true,
                             to: dir.appendingPathComponent("prefs-\(tab.rawValue)\(suffix).png")) && ok
-            if tab == .about {
+            if tab == .about || tab == .whatsNew {
                 ok = renderView(view, scheme: .light, background: true,
-                                to: dir.appendingPathComponent("prefs-about-light\(suffix).png")) && ok
+                                to: dir.appendingPathComponent("prefs-\(tab.rawValue)-light\(suffix).png")) && ok
             }
         }
 

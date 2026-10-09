@@ -39,6 +39,21 @@ final class UsageNotifier: NSObject, UNUserNotificationCenterDelegate {
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
+    /// One summary per What's new check (only when the user turned What's new notifications on).
+    func postWhatsNew(_ items: [NewsItem]) {
+        guard let first = items.first else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "What's new from xAI"
+        if items.count == 1 {
+            content.body = first.title
+        } else {
+            let names = items.prefix(3).map(\.title).joined(separator: " · ")
+            content.body = "\(items.count) updates: \(names)\(items.count > 3 ? " …" : "")"
+        }
+        let request = UNNotificationRequest(identifier: "grokgauge.whatsnew.\(first.id)", content: content, trigger: nil)
+        center.add(request)
+    }
+
     func evaluate(_ snapshot: UsageSnapshot, thresholds: LevelThresholds) {
         evaluate(Self.grok, rounded: snapshot.roundedPercent, thresholds: thresholds,
                  period: snapshot.periodKey, poolName: "this \(snapshot.period.label.lowercased()) pool",

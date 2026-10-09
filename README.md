@@ -10,6 +10,11 @@
 </p>
 
 <p align="center">
+  <a href="https://paypal.me/stevencombs"><img src="https://img.shields.io/badge/Tip%20via-PayPal-00457C?logo=paypal&amp;logoColor=white" alt="Tip via PayPal"></a>
+  <a href="https://www.youtube.com/@retroCombs-Tech"><img src="https://img.shields.io/badge/YouTube-%40retroCombs--Tech-FF0000?logo=youtube&amp;logoColor=white" alt="YouTube @retroCombs-Tech"></a>
+</p>
+
+<p align="center">
   <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (86%), both percents (G 42% · B 86%), percent with days to reset (86% · 3d), the logo alone tinted orange, and a red 95%">
 </p>
 
@@ -45,6 +50,11 @@ Features:
 - **Refresh now**, last-updated time, automatic refresh every 5–60 minutes, and smart retries
   (backoff on errors, a quiet grace period after wake or a network change).
 - **Global shortcut** (default **⌃⌥G**) to open the dropdown from anywhere.
+- **What's new from xAI.** The newest few items from xAI's news posts, the API release notes, Grok CLI
+  updates, the Grok and Grok Bot iPhone apps, and the Grok Bot app on your Mac, with an unread dot and
+  **Mark all read**. When a newer Grok CLI is out it shows the `grok update` command with a **Copy** button
+  (GrokGauge never runs it). Links to [@xai](https://x.com/xai) and [@grok](https://x.com/grok) on X.
+  Optional notifications (off by default): one summary per check.
 - **Open Grok**, **Open Grok Bot** (if installed) and **Open X** (the X app if installed, otherwise x.com) buttons.
 - **Settings window** (gear button or **⌘,**): reorder and hide dropdown sections, menu bar style,
   levels and colors (with a colorblind-friendly preset), notification levels, refresh interval,
@@ -76,6 +86,11 @@ Features:
   <img src="docs/popover-graph-area-dark-demo.png" width="250" alt="History as an area graph">
 </p>
 <p align="center"><sub>Graph styles: Bars (default; ↺ marks the day the week reset) · Line · Area.</sub></p>
+
+<p align="center">
+  <img src="docs/popover-whatsnew-dark-demo.png" width="300" alt="The What's new from xAI section: a Grok CLI update with a Copy button, an xAI news post, a Grok app update, unread dots and Mark all read">
+</p>
+<p align="center"><sub>“What's new from xAI” (sample items).</sub></p>
 
 ## Requirements
 
@@ -145,7 +160,8 @@ Everything applies immediately.
 |---|---|
 | <img src="docs/prefs-layout-demo.png" width="400" alt="Layout tab"> | <img src="docs/prefs-menuBar-demo.png" width="400" alt="Menu Bar tab"> |
 | <img src="docs/prefs-colors-demo.png" width="400" alt="Colors & Alerts tab"> | <img src="docs/prefs-sync-demo.png" width="400" alt="Sync tab"> |
-| <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> |
+| <img src="docs/prefs-whatsNew-demo.png" width="400" alt="What's New tab"> | <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> |
+| <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> | |
 
 - **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, history & pace,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
@@ -163,14 +179,20 @@ Everything applies immediately.
   Colors apply to the rings, the menu bar percent and the product bars. Notifications follow the color
   levels unless you uncheck **Notify at the color levels** and set separate ones. Also: refresh interval
   (5, 15, 30 or 60 minutes) and **Launch at login**.
+- **What's New.** Show or hide the “What's new from xAI” section, choose its sources (xAI news, API
+  release notes, Grok CLI updates, Grok apps on the App Store, Grok Bot for Mac), how often to check
+  (every 6, 12 or 24 hours; the Grok CLI every 2 hours), whether to get one summary notification per check
+  (off by default), **Check Now** and **Mark All Read**. The first check marks everything already out as
+  read, so you only see a dot for what's new after that. Read marks stay on this Mac; the choices sync.
 - **Sync.** See [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…**
   save and load the same JSON file.
 - **Diagnostics.** For Grok and Grok Bot: status, last success, last error (including the server's own
   error message for HTTP errors other than 401/403, with anything token-, email- or id-like removed), and (for Grok) when the
   login expires, plus the app and macOS versions. **Copy Report** puts a plain-text summary on the
-  clipboard for bug reports; it never includes tokens, emails, account ids, or file paths.
+  clipboard for bug reports; it never includes tokens, emails, account ids, or file paths. Each
+  What's new source shows its status, last check and last error.
 - **About.** Version, who made it (with the [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech)
-  YouTube channel and a contact address), links, and **Check for updates daily** (on by default). When a newer release is
+  YouTube channel, a contact address and a **Support GrokGauge · Tip via PayPal** button), links, and **Check for updates daily** (on by default). When a newer release is
   out, the dropdown footer shows **Update available** with a link to the release and the
   `brew upgrade --cask grokgauge` command. GrokGauge never installs anything by itself.
 
@@ -233,10 +255,34 @@ already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
   [stevencombs/GrokGauge](https://github.com/stevencombs/GrokGauge/releases) release. It's unauthenticated
   and sends no identifiers besides a `GrokGauge/<version>` User-Agent.
 - **Open X** just opens the X app or x.com. GrokGauge reads no X data.
+- **Support GrokGauge…** (dropdown footer, app menu, Settings › About) just opens
+  [paypal.me/stevencombs](https://paypal.me/stevencombs) in your browser.
+
+### What's new from xAI
+
+Public pages only: no login, no API key, no cookies, nothing about you. Each request identifies itself
+as `GrokGauge/<version> (macOS menu bar)`. Hosts contacted, only for the sources you leave on:
+
+| Source | Host and URL | How often |
+|---|---|---|
+| xAI news | `x.ai/sitemap.xml`, then `x.ai/news/<post>` for titles of new posts (at most 5 per check) | every 6 h (or 12/24) |
+| API release notes | `docs.x.ai/developers/release-notes.md` | every 6 h (or 12/24) |
+| Grok CLI updates | `x.ai/cli/stable` (fallback `storage.googleapis.com/grok-build-public-artifacts/cli/stable`) | every 2 h |
+| Grok apps | `itunes.apple.com/lookup` (Apple's public App Store lookup) | every 6 h (or 12/24) |
+| Grok Bot for Mac | no network: reads `/Applications/Grok Bot.app/Contents/Info.plist` | every 15 min |
+
+- The first check runs about a minute after launch. Requests time out after 15 s; failures back off
+  (5 min, 10, 20 … up to the interval). Conditional requests (`If-None-Match`/`If-Modified-Since`)
+  are used where the server supports them.
+- To compare Grok CLI versions GrokGauge **reads** `~/.grok/bin/grok` (the symlink's target name) or
+  `~/.grok/version.json`. It never runs the CLI or `grok update`; it shows the command for you to copy.
+- Items and read marks stay in `~/Library/Application Support/GrokGauge/whatsnew.json` (never synced).
+- X isn't read (that needs an account); the section links to the @xai and @grok profiles instead.
 
 ### Everything
 
-- No analytics, no telemetry, no third-party servers.
+- No analytics, no telemetry. Besides xAI, GitHub (update check) and the What's new hosts above,
+  GrokGauge talks to no servers.
 
 ## How it works (and the fine print)
 
@@ -360,6 +406,8 @@ which wrote the code, tests, and docs to his spec.
 - **YouTube:** [@retroCombs-Tech](https://www.youtube.com/@retroCombs-Tech)
 - **Contact:** [retroCombs@icloud.com](mailto:retroCombs@icloud.com)
 - **Bugs and feature requests:** [GitHub issues](https://github.com/stevencombs/GrokGauge/issues/new/choose)
+- **Support the project:** if GrokGauge saves you a surprise at the weekly limit, you can
+  [tip via PayPal](https://paypal.me/stevencombs). Thank you!
 
 The same links are in GrokGauge under **Settings › About**.
 <br clear="left">
