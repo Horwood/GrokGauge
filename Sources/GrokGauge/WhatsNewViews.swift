@@ -9,7 +9,10 @@ struct WhatsNewCard: View {
     let settings: WhatsNewSettings
     let now: Date
 
-    private var items: [NewsItem] { store.state.latest(enabled: settings.enabled, limit: WhatsNewStore.shownItems) }
+    @ViewState var expanded = false
+
+    private var all: [NewsItem] { store.state.latest(enabled: settings.enabled, limit: WhatsNewSettings.expandedItems) }
+    private var items: [NewsItem] { expanded ? all : Array(all.prefix(WhatsNewSettings.compactItems)) }
     private var unread: Int { store.state.unread(enabled: settings.enabled).count }
 
     var body: some View {
@@ -53,6 +56,14 @@ struct WhatsNewCard: View {
                 }
             }
             HStack(spacing: 10) {
+                if all.count > WhatsNewSettings.compactItems {
+                    Button(expanded ? "Show less" : "Show more (\(all.count - WhatsNewSettings.compactItems))") {
+                        expanded.toggle()
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption2)
+                    .accessibilityLabel(expanded ? "Show fewer What's new items" : "Show more What's new items")
+                }
                 Text("On X:").font(.caption2).foregroundStyle(.tertiary)
                 Link("@xai", destination: NewsLinks.xaiProfile).font(.caption2)
                 Link("@grok", destination: NewsLinks.grokProfile).font(.caption2)
@@ -168,7 +179,7 @@ struct WhatsNewPrefs: View {
     var body: some View {
         Group {
             PrefGroup(title: "Dropdown",
-                      footer: "Shows the 4 newest items. A dot marks items you haven't opened; the first check marks everything already out as read.") {
+                      footer: "Shows the 3 newest items (Show more for up to 8). A dot marks items you haven't opened; the first check marks everything already out as read.") {
                 Toggle("Show “What's new from xAI” in the dropdown", isOn: Binding(
                     get: { settings.isVisible(.whatsNew) },
                     set: { on in

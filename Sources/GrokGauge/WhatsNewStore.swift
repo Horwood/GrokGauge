@@ -12,7 +12,6 @@ final class WhatsNewStore: ObservableObject {
 
     static let firstCheckDelay: TimeInterval = 60
     static let tick: TimeInterval = 10 * 60
-    static let shownItems = 4
 
     private let url: URL?
     private let fetcher: WhatsNewFetcher?
@@ -43,7 +42,6 @@ final class WhatsNewStore: ObservableObject {
     }
 
     var enabled: Set<NewsSource> { settings().enabled }
-    var latest: [NewsItem] { state.latest(enabled: enabled, limit: Self.shownItems) }
     var unreadCount: Int { state.unread(enabled: enabled).count }
     func isUnread(_ item: NewsItem) -> Bool { state.isUnread(item) }
 

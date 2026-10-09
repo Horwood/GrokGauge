@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var whatsNew = WhatsNewStore(
         settings: { [unowned self] in self.settingsStore.settings.whatsNew },
         notify: { [unowned self] items in self.notifier.postWhatsNew(items) })
+    private let sizing = PopoverSizing()
     private let loginItem = LaunchAtLogin()
     private var preferences: PreferencesWindowController?
     private var cancellables = Set<AnyCancellable>()
@@ -33,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.setAccessibilityLabel("GrokGauge")
         }
 
-        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew) { [weak self] in
+        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew, sizing: sizing) { [weak self] in
             self?.openPreferences()
         }
         let host = NSHostingController(rootView: root)
@@ -59,6 +60,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.$settings
             .receive(on: RunLoop.main)
             .sink { [weak self] s in self?.apply(s) }
+            .store(in: &cancellables)
+
+        // Displays added, removed or rearranged (or the Dock resized): re-cap the dropdown height.
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updatePopoverSizing() }
             .store(in: &cancellables)
 
         HotKeyCenter.shared.action = { [weak self] in self?.togglePopover(nil) }
@@ -192,6 +199,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferences?.show()
     }
 
+    /// Caps the dropdown to the visible part of the status item's screen.
+    private func updatePopoverSizing() {
+        sizing.update(for: statusItem?.button?.window?.screen)
+    }
+
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusItem.button else { return }
         if popover.isShown {
@@ -199,6 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             loginItem.refresh()
             store.refreshIfStale()
+            updatePopoverSizing()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate()
             popover.contentViewController?.view.window?.makeKey()

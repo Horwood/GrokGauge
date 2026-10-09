@@ -2,12 +2,46 @@ import AppKit
 import GrokGaugeCore
 import SwiftUI
 
+/// The tallest the dropdown may be, from the status item's screen. nil = no limit (previews).
+@MainActor
+final class PopoverSizing: ObservableObject {
+    @Published var maxHeight: CGFloat?
+    init(maxHeight: CGFloat? = nil) { self.maxHeight = maxHeight }
+
+    /// Uses the visible part of `screen` (below the menu bar, above the Dock).
+    func update(for screen: NSScreen?) {
+        guard let screen = screen ?? NSScreen.main else { return }
+        let h = CGFloat(PopoverLayout.maxContentHeight(visibleHeight: Double(screen.visibleFrame.height)))
+        if maxHeight != h { maxHeight = h }
+    }
+}
+
+private struct TopHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+private struct MiddleHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+private struct BottomHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private extension View {
+    func reportHeight<K: PreferenceKey>(_ key: K.Type) -> some View where K.Value == CGFloat {
+        background(GeometryReader { g in Color.clear.preference(key: key, value: g.size.height) })
+    }
+}
+
 struct PopoverView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var history: HistoryStore
     @ObservedObject var updates: UpdateMonitor
     @ObservedObject var whatsNew: WhatsNewStore
+    @ObservedObject var sizing: PopoverSizing
     var openPreferences: () -> Void = {}
 
     private var settings: GaugeSettings { settingsStore.settings }
@@ -54,23 +88,70 @@ struct PopoverView: View {
         return out
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+    @ViewState var topHeight: CGFloat = 0
+    @ViewState var middleHeight: CGFloat = 0
+    @ViewState var bottomHeight: CGFloat = 0
 
-            TimelineView(.periodic(from: .now, by: 30)) { context in
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(blocks, id: \.self) { block in
-                        blockView(block, now: context.date)
+    private static let padding: CGFloat = 16
+    private static let gap: CGFloat = 12
+
+    /// Rings (and the problem card) at the start stay at the top; the Updated row and buttons at the end
+    /// stay at the bottom; the rest scrolls when the screen is too short for everything.
+    private var parts: (top: [Block], middle: [Block], bottom: [Block]) {
+        let b = blocks
+        let r = PopoverLayout.partition(count: b.count, pinTop: { i in
+            switch b[i] { case .rings, .stackedRing, .problem: return true; default: return false }
+        }, pinBottom: { i in
+            b[i] == .section(.refreshRow) || b[i] == .section(.actions)
+        })
+        return (Array(b[r.top]), Array(b[r.middle]), Array(b[r.bottom]))
+    }
+
+    private var scrollHeight: CGFloat {
+        let fixed = topHeight + bottomHeight + Self.gap * 2 + Self.padding * 2
+        return CGFloat(PopoverLayout.scrollHeight(content: Double(middleHeight), fixed: Double(fixed),
+                                                  maxHeight: sizing.maxHeight.map(Double.init)))
+    }
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let p = parts
+            VStack(alignment: .leading, spacing: Self.gap) {
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+                    if !p.top.isEmpty {
+                        VStack(alignment: .leading, spacing: Self.gap) {
+                            ForEach(p.top, id: \.self) { blockView($0, now: context.date) }
+                        }
                     }
                 }
-            }
+                .reportHeight(TopHeightKey.self)
 
-            Divider()
-            footer
+                if !p.middle.isEmpty {
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: Self.gap) {
+                            ForEach(p.middle, id: \.self) { blockView($0, now: context.date) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .reportHeight(MiddleHeightKey.self)
+                    }
+                    .scrollIndicators(middleHeight > scrollHeight + 1 ? .automatic : .never)
+                    .frame(height: scrollHeight)
+                }
+
+                VStack(alignment: .leading, spacing: Self.gap) {
+                    ForEach(p.bottom, id: \.self) { blockView($0, now: context.date) }
+                    Divider()
+                    footer
+                }
+                .reportHeight(BottomHeightKey.self)
+            }
         }
-        .padding(16)
+        .padding(Self.padding)
         .frame(width: 320)
+        .onPreferenceChange(TopHeightKey.self) { topHeight = $0 }
+        .onPreferenceChange(MiddleHeightKey.self) { middleHeight = $0 }
+        .onPreferenceChange(BottomHeightKey.self) { bottomHeight = $0 }
         .environment(\.palette, Palette(settings))
     }
 

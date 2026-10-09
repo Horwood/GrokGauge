@@ -37,7 +37,8 @@ enum PreviewRenderer {
         for scheme in [ColorScheme.dark, .light] {
             let name = scheme == .dark ? "dark" : "light"
             let view = PopoverView(store: store, settingsStore: settings, history: historyStore,
-                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew)
+                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                   sizing: PopoverSizing())
             ok = renderView(view, scheme: scheme, background: true,
                             to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
@@ -78,10 +79,22 @@ enum PreviewRenderer {
             }
             for (name, s, st) in variants + styles {
                 let view = PopoverView(store: st, settingsStore: SettingsStore.preview(s), history: historyStore,
-                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew)
+                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                   sizing: PopoverSizing())
                 ok = renderView(view, scheme: .dark, background: true,
                                 to: dir.appendingPathComponent("popover-\(name)-dark-demo.png")) && ok
             }
+        }
+
+        if demo {
+            // An 800 pt tall screen (a 13" MacBook Air at a larger text size): the middle scrolls,
+            // the rings and the buttons/footer stay put.
+            let visible = 800.0 - 25          // minus the menu bar
+            let short = PopoverView(store: store, settingsStore: SettingsStore.preview(), history: historyStore,
+                                    updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                    sizing: PopoverSizing(maxHeight: CGFloat(PopoverLayout.maxContentHeight(visibleHeight: visible))))
+            ok = renderView(short, scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("popover-short-screen-dark-demo.png")) && ok
         }
 
         // Preferences tabs (dark), with data that shows each control in a realistic state.

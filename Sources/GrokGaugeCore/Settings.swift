@@ -526,3 +526,9 @@ public struct LevelThresholds: Codable, Equatable, Hashable, Sendable {
 
     static func clamp(_ v: Int, _ lo: Int, _ hi: Int) -> Int { min(max(v, lo), hi) }
 }
+
+public extension WhatsNewSettings {
+    /// Items shown in the dropdown before "Show more", and after.
+    static let compactItems = 3
+    static let expandedItems = 8
+}
