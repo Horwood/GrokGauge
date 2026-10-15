@@ -215,14 +215,28 @@ struct PopoverView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(.fill.tertiary, in: Capsule())
-            Button(action: openPreferences) {
+            // Same pattern as ClipGauge: the gear opens a small menu with Settings… and Quit.
+            Menu {
+                Button("Settings…", action: openPreferences)
+                    .keyboardShortcut(",", modifiers: .command)
+                Divider()
+                Button("Quit GrokGauge") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q", modifiers: .command)
+            } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 13, weight: .medium))
             }
-            .buttonStyle(.borderless)
-            .keyboardShortcut(",", modifiers: .command)
-            .help("Settings (⌘,)")
-            .accessibilityLabel("Settings")
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Settings (⌘,) and Quit")
+            .accessibilityLabel("Settings and Quit")
+            // ⌘, still opens Settings straight from the dropdown without opening the menu first.
+            Button("Settings", action: openPreferences)
+                .keyboardShortcut(",", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         }
     }
 
