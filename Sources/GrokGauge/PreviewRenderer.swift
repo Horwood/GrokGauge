@@ -141,6 +141,27 @@ enum PreviewRenderer {
             }
         }
 
+        if demo {
+            // "Grok by product" with a custom setup: Highest usage first, Voice hidden, a reordered list.
+            // Labeled "Example data" because the numbers are the demo sample, not a real account.
+            var custom = GaugeSettings()
+            custom.productBreakdown = ProductBreakdownSettings(
+                order: [ProductToggle("Build"), ProductToggle("Chat"), ProductToggle("API"),
+                        ProductToggle("Imagine"), ProductToggle("Voice", visible: false)],
+                sort: .usage)
+            let customStore = SettingsStore.preview(custom)
+            let pop = PopoverView(store: store, settingsStore: customStore, history: historyStore,
+                                  updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                  sizing: PopoverSizing())
+            ok = renderView(exampleLabeled(pop), scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("popover-products-sorted-example.png")) && ok
+            let prefs = PreferencesView(settingsStore: customStore, store: store, updates: updates,
+                                        loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared, whatsNew: whatsNew,
+                                        history: prefsHistory, tab: .layout, scrollable: false, tokenExpiry: { expiry })
+            ok = renderView(exampleLabeled(prefs), scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("prefs-layout-products-example.png")) && ok
+        }
+
         let g = snapshot.roundedPercent
         let b = bot?.roundedPercent
         let gd = snapshot.timeUntilReset().map(UsageFormat.wholeDays)
@@ -185,6 +206,19 @@ enum PreviewRenderer {
         return GrokBotSnapshot(percent: 86.3, nextReset: now.addingTimeInterval(3.6 * 86_400),
                                readAt: now.addingTimeInterval(-6 * 60), expiresAt: now.addingTimeInterval(86_400),
                                planLabel: "SuperGrok Plus")
+    }
+
+    /// Adds an "Example data" caption above a preview.
+    private static func exampleLabeled<V: View>(_ view: V) -> some View {
+        VStack(spacing: 0) {
+            Text("Example data")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10).padding(.vertical, 3)
+                .background(.fill.tertiary, in: Capsule())
+                .padding(.top, 8)
+            view
+        }
     }
 
     private static func renderView<V: View>(_ view: V, scheme: ColorScheme, background: Bool, to url: URL) -> Bool {

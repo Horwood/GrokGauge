@@ -24,6 +24,12 @@ dates are when the version was built.
   other Macs' readings appear on their own. Insync/Drive conflict copies are merged; partial, corrupt or
   foreign files are skipped (never deleted) and listed in Settings › Diagnostics › **History sync**, with the
   folder, the number of Macs and the last sync time.
+- **Pick and sort the "Grok by product" rows.** Settings › Layout › **Grok by product** has a checkbox per
+  product, a drag-to-reorder list (arrows and VoiceOver actions too), a **Sort** menu (My order, the default;
+  Highest usage first, with ties in My order; Alphabetical) and **Reset**. Products xAI adds later appear at
+  the end, shown. Unchecking every product hides the section. The choices are part of your settings, so they
+  go into Export/Import and settings sync; settings from older versions get every product, the standard
+  order and My order. **Reset Layout to Default** resets them too.
 - **Guided Grok CLI setup.** When the Grok CLI isn't installed, the dropdown says so (instead of only
   "run `grok login`", which fails with "command not found") and offers **Copy install command**
   (`curl -fsSL https://x.ai/cli/install.sh | bash`, xAI's official installer), **Install in Terminal…**

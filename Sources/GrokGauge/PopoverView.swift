@@ -73,7 +73,10 @@ struct PopoverView: View {
                     out.append(.problem)
                     ringsDone = true
                 }
-            case .productBreakdown, .credits:
+            case .productBreakdown:
+                // Hidden when every product is unchecked in Settings (like the history section).
+                if let s = store.snapshot, !settings.productBreakdown.arrange(s.products).isEmpty { out.append(.section(item.id)) }
+            case .credits:
                 if store.snapshot != nil { out.append(.section(item.id)) }
             case .historyPace:
                 // Hidden when both graphs are switched off (or only Grok Bot's is on and it isn't installed).
@@ -184,7 +187,7 @@ struct PopoverView: View {
                       labelLines: store.hasGrokBot,
                       now: now)
         case .productBreakdown:
-            if let s = store.snapshot { ProductBreakdown(products: s.products, level: s.roundedPercent) }
+            if let s = store.snapshot { ProductBreakdown(products: settings.productBreakdown.arrange(s.products), level: s.roundedPercent) }
         case .credits:
             if let s = store.snapshot { CreditsCard(snapshot: s) }
         case .whatsNew:

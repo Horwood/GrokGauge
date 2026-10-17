@@ -111,6 +111,26 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
                 .disabled(!settingsStore.settings.showGrokHistory && !settingsStore.settings.showGrokBotHistory)
             }
+            PrefGroup(title: "Grok by product",
+                      footer: "Check the products to show and drag (or use the arrows) to set My order. "
+                        + "Other sorts fall back to My order for ties. Products xAI adds later appear at the end, shown. "
+                        + "Unchecking every product hides the section.") {
+                ProductReorderList(items: Binding(
+                    get: { settingsStore.settings.productBreakdown.listing(including: store.snapshot?.products ?? []) },
+                    set: { settingsStore.settings.productBreakdown.order = $0 }))
+                Divider()
+                PrefRow(label: "Sort") {
+                    Picker("Sort", selection: settings.productBreakdown.sort) {
+                        ForEach(ProductSort.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    Button("Reset") { settingsStore.settings.productBreakdown.reset() }
+                        .disabled(settingsStore.settings.productBreakdown.isDefault)
+                }
+                .padding(.vertical, 4)
+            }
+            .disabled(!settingsStore.settings.isVisible(.productBreakdown))
             PrefGroup(title: "Rings") {
                 Picker("Ring style", selection: settings.ringStyle) {
                     ForEach(RingStyle.allCases) { Text($0.title).tag($0) }

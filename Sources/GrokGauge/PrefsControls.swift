@@ -418,3 +418,82 @@ struct GraphThumbnail: View {
         .accessibilityHidden(true)
     }
 }
+
+// MARK: - Product rows (string ids, so products xAI adds later can be listed too)
+
+/// The same checkbox + drag/arrow reordering as `ReorderList`, for "Grok by product".
+struct ProductReorderList: View {
+    @Binding var items: [ProductToggle]
+    @ViewState var targeted: String? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                row(index: index, item: item)
+                if index < items.count - 1 { Divider() }
+            }
+        }
+    }
+
+    private func row(index: Int, item: ProductToggle) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.tertiary)
+                .help("Drag to reorder")
+                .accessibilityHidden(true)
+            Toggle(isOn: Binding(get: { items[safe: index]?.visible ?? false },
+                                 set: { v in if items.indices.contains(index) { var c = items; c[index].visible = v; items = c } })) {
+                HStack(spacing: 6) {
+                    Image(systemName: UsageParser.symbol(forProduct: item.id)).foregroundStyle(.secondary).frame(width: 18)
+                    Text(item.id)
+                    if !ProductBreakdownSettings.canonicalNames.contains(item.id) {
+                        Text("(new)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .toggleStyle(.checkbox)
+            Spacer()
+            HStack(spacing: 2) {
+                Button { move(item.id, to: index - 1) } label: { Image(systemName: "chevron.up") }
+                    .disabled(index == 0)
+                    .accessibilityLabel("Move \(item.id) up")
+                Button { move(item.id, to: index + 1) } label: { Image(systemName: "chevron.down") }
+                    .disabled(index == items.count - 1)
+                    .accessibilityLabel("Move \(item.id) down")
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .background(targeted == item.id ? Color.accentColor.opacity(0.12) : .clear,
+                    in: RoundedRectangle(cornerRadius: 6))
+        .draggable("product:" + item.id) {
+            Text(item.id)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(.regularMaterial, in: Capsule())
+        }
+        .dropDestination(for: String.self) { dropped, _ in
+            guard let raw = dropped.first, raw.hasPrefix("product:") else { return false }
+            move(String(raw.dropFirst("product:".count)), to: index)
+            return true
+        } isTargeted: { on in
+            if on { targeted = item.id } else if targeted == item.id { targeted = nil }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Move up") { move(item.id, to: index - 1) }
+        .accessibilityAction(named: "Move down") { move(item.id, to: index + 1) }
+    }
+
+    private func move(_ id: String, to target: Int) {
+        guard let from = items.firstIndex(where: { $0.id == id }) else { return }
+        let to = min(max(target, 0), items.count - 1)
+        guard from != to else { return }
+        var copy = items
+        let item = copy.remove(at: from)
+        copy.insert(item, at: to)
+        if reduceMotion { items = copy } else { withAnimation(.easeInOut(duration: 0.18)) { items = copy } }
+    }
+}

@@ -185,7 +185,10 @@ Everything applies immediately.
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
   rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
   choose whether the Grok and Grok Bot graphs appear (turning both off hides the section) and pick the
-  **Graph style**: Bars (one bar per day, the default), Line, or Area. Pick the ring style, and
+  **Graph style**: Bars (one bar per day, the default), Line, or Area. Under **Grok by product**, check
+  which products appear (Chat, Imagine, Voice, Build, API, plus any product xAI adds later, which shows up
+  at the end), drag them into your order, and pick a **Sort**: My order, Highest usage first (ties keep
+  your order) or Alphabetical; unchecking them all hides the section. Pick the ring style, and
   choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
 - **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
   green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.
