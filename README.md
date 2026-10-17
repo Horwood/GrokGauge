@@ -96,11 +96,28 @@ Features:
 
 - macOS 14 Sonoma or later
 - A SuperGrok subscription
-- The **Grok CLI** (Grok Build), signed in once:
+- The **Grok CLI** (Grok Build), signed in once. It's needed only for the **Grok** ring; the
+  **Grok Bot** ring works without it. If you don't have it yet, install it with xAI's official installer:
+
+  ```sh
+  curl -fsSL https://x.ai/cli/install.sh | bash
+  ```
+
+  then sign in:
 
   ```sh
   grok login
   ```
+
+  If Terminal says `grok: command not found` right after installing, open a new Terminal window
+  (the installer adds `~/.grok/bin` to your PATH) or run `~/.grok/bin/grok login`.
+
+  GrokGauge walks you through this too: until the CLI is installed and signed in, the dropdown shows
+  **Grok CLI not installed** (with **Copy install command**, **Install in Terminal…** and **Open Terminal**)
+  or **Sign in to Grok** (with **Copy “grok login”**). **Install in Terminal…** asks first, then opens
+  Terminal running the installer above; GrokGauge never installs anything or signs in on its own. It
+  notices the new login within a few seconds and switches to your usage, no relaunch needed.
+  Settings › Diagnostics shows the same Grok CLI status.
 
   GrokGauge uses the login the CLI saves in `~/.grok/auth.json` and **renews it automatically**
   the same way the CLI does, so you stay signed in without running `grok login` again. You only

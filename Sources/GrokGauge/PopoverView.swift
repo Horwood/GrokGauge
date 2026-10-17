@@ -1010,14 +1010,27 @@ private struct ProblemCard: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if problem == .cliNotInstalled {
+                Text(GrokCLISetup.installCommand)
+                    .font(.system(size: 10, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 4))
+                    .accessibilityLabel("Install command: \(GrokCLISetup.installCommand)")
+                HStack {
+                    Button("Copy install command") { Launcher.copyInstallCommand() }
+                    Button("Install in Terminal…") { Launcher.installCLIInTerminal() }
+                        .help("Asks first, then opens Terminal running xAI's installer")
+                }
+                .controlSize(.small)
+            }
             HStack {
-                if problem.needsLogin {
+                if problem == .cliNotInstalled {
+                    Button("Open Terminal") { Launcher.openTerminal() }
+                } else if problem.needsLogin {
                     Button("Copy “grok login”") { Launcher.copyLoginCommand() }
-                    Button("Open Terminal") {
-                        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") {
-                            NSWorkspace.shared.openApplication(at: url, configuration: .init()) { _, _ in }
-                        }
-                    }
+                    Button("Open Terminal") { Launcher.openTerminal() }
                 }
                 Spacer()
                 Button("Retry", action: retry)
@@ -1028,6 +1041,7 @@ private struct ProblemCard: View {
     }
 
     private var icon: String {
+        if problem == .cliNotInstalled { return "terminal" }
         if problem.needsLogin { return "person.crop.circle.badge.exclamationmark" }
         if problem == .changedShape { return "questionmark.diamond.fill" }
         return "exclamationmark.triangle.fill"

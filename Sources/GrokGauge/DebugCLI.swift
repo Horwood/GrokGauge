@@ -19,7 +19,12 @@ enum DebugCLI {
         } catch let e as FetchError {
             let message: String
             switch e {
-            case .auth(.notSignedIn): message = "Not signed in: no usable token in \(AuthStore.authFileURL.path). Run `grok login`."
+            case .auth(.notSignedIn):
+                if GrokCLISetup.findCLI(shellPATH: GrokCLISetup.loginShellPATH()) == nil {
+                    message = "Grok CLI not installed. Install it with `\(GrokCLISetup.installCommand)`, then run `\(GrokCLISetup.fallbackLoginCommand)` (or `grok login` in a new Terminal window)."
+                } else {
+                    message = "Not signed in: no usable token in \(AuthStore.authFileURL.path). Run `grok login` (or `\(GrokCLISetup.fallbackLoginCommand)`)."
+                }
             case .auth(.unreadable): message = "Could not read \(AuthStore.authFileURL.path). Run `grok login`."
             case .auth(.expired(let d)): message = "Grok login expired at \(UsageFormat.resetDate(d)) and has no refresh token. Run `grok login` to reconnect."
             case .auth(.refreshRejected): message = "auth.x.ai refused to renew the Grok login (refresh token revoked or expired). Run `grok login` to reconnect."

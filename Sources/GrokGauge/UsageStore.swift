@@ -5,6 +5,8 @@ import Network
 
 /// What went wrong on the most recent refresh, phrased for people.
 enum UsageProblem: Equatable {
+    /// No usable login and no `grok` command found: the Grok CLI needs installing first.
+    case cliNotInstalled
     case signedOut
     case expired
     case network(String)
@@ -16,7 +18,8 @@ enum UsageProblem: Equatable {
 
     var title: String {
         switch self {
-        case .signedOut: return "Connect your Grok account"
+        case .cliNotInstalled: return "Grok CLI not installed"
+        case .signedOut: return "Sign in to Grok"
         case .expired: return "Grok login expired"
         case .network(let m): return m
         case .server(let code, _): return "Grok returned an error (\(code))"
@@ -27,7 +30,13 @@ enum UsageProblem: Equatable {
 
     var detail: String {
         switch self {
-        case .signedOut: return "Run `grok login` in Terminal, then click Refresh."
+        case .cliNotInstalled:
+            return "GrokGauge reads your Grok usage through the Grok CLI's sign-in. Install the CLI with xAI's "
+                + "installer, then run `grok login` (in a new Terminal window, or `~/.grok/bin/grok login`). "
+                + "The Grok Bot ring works without it."
+        case .signedOut:
+            return "Run `grok login` in Terminal. If it says “command not found”, open a new Terminal window "
+                + "or run `~/.grok/bin/grok login`. GrokGauge notices the sign-in automatically."
         case .expired: return "GrokGauge couldn't renew it automatically. Run `grok login` to reconnect, then click Refresh."
         case .network: return "GrokGauge will retry automatically."
         case .server(_, let message?):
@@ -48,7 +57,8 @@ enum UsageProblem: Equatable {
         return title
     }
 
-    var needsLogin: Bool { self == .signedOut || self == .expired }
+    /// Needs the user to install the CLI or sign in (no number can be shown until then).
+    var needsLogin: Bool { self == .signedOut || self == .expired || self == .cliNotInstalled }
 
     /// Worth retrying soon with backoff (instead of waiting for the next scheduled refresh).
     var isTransient: Bool {
@@ -63,6 +73,7 @@ enum UsageProblem: Equatable {
     /// Short caption under the Grok ring.
     var ringCaption: String {
         switch self {
+        case .cliNotInstalled: return "Install the Grok CLI"
         case .signedOut, .expired: return "Run `grok login`"
         case .changedShape: return "xAI changed something"
         default: return "Can't reach Grok"
@@ -152,6 +163,11 @@ final class UsageStore: ObservableObject {
     private var settings: () -> GaugeSettings
     private var timer: Timer?
     private var botTimer: Timer?
+    /// While setup is needed: notices `grok login` finishing or the CLI appearing, without a relaunch.
+    private var setupTimer: Timer?
+    private var loginStamp: Date?
+    /// The login shell's PATH (read once, off the main thread), for finding `grok`.
+    private var shellPATH: String?
     private var retryWork: DispatchWorkItem?
     private var failures = 0
     private var interval: TimeInterval = AppInfo.refreshInterval
@@ -192,6 +208,18 @@ final class UsageStore: ObservableObject {
             Task { @MainActor in self?.refreshBot() }
         }
         botTimer?.tolerance = 15
+        loginStamp = GrokCLISetup.loginStamp()
+        Task.detached(priority: .utility) {
+            let path = GrokCLISetup.loginShellPATH()
+            await MainActor.run { [weak self] in
+                self?.shellPATH = path
+                if self?.problem == .cliNotInstalled, GrokCLISetup.findCLI(shellPATH: path) != nil { self?.refresh() }
+            }
+        }
+        setupTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.watchSetup() }
+        }
+        setupTimer?.tolerance = 1
 
         let ws = NSWorkspace.shared.notificationCenter
         sleepObserver = ws.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
@@ -243,6 +271,8 @@ final class UsageStore: ObservableObject {
     /// Refresh if the data is older than `age` seconds (used when the popover opens).
     func refreshIfStale(olderThan age: TimeInterval = 60) {
         refreshBot()
+        // Setup in progress: check again every time the dropdown opens.
+        if problem?.needsLogin == true { return refresh() }
         guard let last = lastAttempt else { return refresh() }
         if Date().timeIntervalSince(last) > age { refresh() }
     }
@@ -284,9 +314,31 @@ final class UsageStore: ObservableObject {
                 history?.record(.grok, percent: s.percent, at: s.fetchedAt)
                 notifier.evaluate(s, thresholds: settings().effectiveNotificationThresholds)
             } catch {
-                handleFailure(UsageProblem(error))
+                var p = UsageProblem(error)
+                if p == .signedOut, GrokCLISetup.findCLI(shellPATH: shellPATH) == nil { p = .cliNotInstalled }
+                handleFailure(p)
             }
             isRefreshing = false
+        }
+    }
+
+    /// Where Grok setup stands right now (cheap local checks; no network, never reads the token aloud).
+    func cliState() -> GrokCLIState {
+        GrokCLISetup.state(cliPath: GrokCLISetup.findCLI(shellPATH: shellPATH),
+                           hasUsableLogin: GrokCLISetup.hasUsableLogin())
+    }
+
+    /// Every few seconds while setup is needed: refresh as soon as `auth.json` appears or changes,
+    /// and move from "not installed" to "sign in" once the CLI shows up.
+    private func watchSetup() {
+        guard let p = problem, p.needsLogin, !isRefreshing else { return }
+        let stamp = GrokCLISetup.loginStamp()
+        if stamp != loginStamp {
+            loginStamp = stamp
+            if stamp != nil { return refresh() }
+        }
+        if p == .cliNotInstalled, GrokCLISetup.findCLI(shellPATH: shellPATH) != nil {
+            problem = .signedOut
         }
     }
 

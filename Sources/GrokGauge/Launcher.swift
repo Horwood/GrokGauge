@@ -1,4 +1,5 @@
 import AppKit
+import GrokGaugeCore
 
 enum Launcher {
     static func openGrok() {
@@ -78,7 +79,48 @@ enum Launcher {
     }
 
     static func copyLoginCommand() {
+        copy(GrokCLISetup.loginCommand)
+    }
+
+    static func copyInstallCommand() {
+        copy(GrokCLISetup.installCommand)
+    }
+
+    private static func copy(_ s: String) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString("grok login", forType: .string)
+        NSPasteboard.general.setString(s, forType: .string)
+    }
+
+    static func openTerminal() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return }
+        NSWorkspace.shared.openApplication(at: url, configuration: .init()) { _, _ in }
+    }
+
+    /// Asks first, then opens Terminal running xAI's official installer. Never runs anything silently,
+    /// never signs in for the user.
+    @MainActor
+    static func installCLIInTerminal() {
+        let alert = NSAlert()
+        alert.messageText = "Install the Grok CLI in Terminal?"
+        alert.informativeText = """
+            Terminal will open and run xAI's official installer:
+
+            \(GrokCLISetup.installCommand)
+
+            It downloads the Grok CLI from x.ai and installs it in ~/.grok. When it's done, run \
+            “\(GrokCLISetup.fallbackLoginCommand)” (or “grok login” in a new window) to sign in. \
+            GrokGauge picks up the sign-in automatically.
+            """
+        alert.addButton(withTitle: "Open Terminal and Install")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return }
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("Install Grok CLI.command")
+        do {
+            try GrokCLISetup.terminalScript.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        } catch { return }
+        NSWorkspace.shared.open([script], withApplicationAt: terminal, configuration: .init()) { _, _ in }
     }
 }

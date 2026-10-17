@@ -6,6 +6,13 @@ dates are when the version was built.
 ## [Unreleased]
 
 ### Added
+- **Guided Grok CLI setup.** When the Grok CLI isn't installed, the dropdown says so (instead of only
+  "run `grok login`", which fails with "command not found") and offers **Copy install command**
+  (`curl -fsSL https://x.ai/cli/install.sh | bash`, xAI's official installer), **Install in Terminal…**
+  (asks first, then runs it in Terminal) and **Open Terminal**. Once installed it shows **Sign in to Grok**
+  with **Copy “grok login”** and the `~/.grok/bin/grok login` fallback. GrokGauge re-checks when the dropdown
+  opens and every few seconds while setup is pending, and switches to usage as soon as `auth.json` appears.
+  Diagnostics and `--print-usage` show the same status.
 - **What's new from xAI** section in the dropdown: the 4 newest items from xAI news (x.ai sitemap), the API
   release notes (docs.x.ai), Grok CLI updates (x.ai/cli/stable vs. the installed CLI, with the `grok update`
   command and a Copy button; GrokGauge never runs it), the Grok and Grok Bot iPhone apps (Apple's public

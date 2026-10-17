@@ -65,6 +65,11 @@ enum PreviewRenderer {
                 ("whatsnew", news, store),
                 ("stacked-colorblind", stacked, store),
                 ("combined-compact", combined, store),
+                ("cli-setup", GaugeSettings(), {
+                    let s = UsageStore(notifier: UsageNotifier())
+                    s.showPreview(nil, problem: .cliNotInstalled, bot: bot, botProblem: botProblem)
+                    return s
+                }()),
                 ("changed-shape", GaugeSettings(), {
                     let s = UsageStore(notifier: UsageNotifier())
                     s.showPreview(nil, problem: .changedShape, bot: bot, botProblem: botProblem)

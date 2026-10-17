@@ -8,4 +8,10 @@ CLT_FW="/Library/Developer/CommandLineTools/Library/Developer/Frameworks"
 if [[ "$(xcode-select -p 2>/dev/null)" == "/Library/Developer/CommandLineTools" && -d "$CLT_FW" ]]; then
   args+=(-Xswiftc -F -Xswiftc "$CLT_FW" -Xlinker -F -Xlinker "$CLT_FW" -Xlinker -rpath -Xlinker "$CLT_FW")
 fi
+# Newer Command Line Tools (Swift 6.3+) keep swift-testing's interop library here; without an rpath the
+# test bundle fails to load ("Library not loaded: @rpath/lib_TestingInterop.dylib").
+CLT_LIB="/Library/Developer/CommandLineTools/Library/Developer/usr/lib"
+if [[ "$(xcode-select -p 2>/dev/null)" == "/Library/Developer/CommandLineTools" && -f "$CLT_LIB/lib_TestingInterop.dylib" ]]; then
+  args+=(-Xlinker -rpath -Xlinker "$CLT_LIB")
+fi
 exec swift test "${args[@]}" "$@"

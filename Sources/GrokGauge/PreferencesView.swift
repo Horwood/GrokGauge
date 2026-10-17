@@ -452,6 +452,8 @@ struct DiagnosticsTab: View {
                         PrefRow(label: "Login expires", detail: "Renewed automatically before it runs out") {
                             Text(Self.time(s.tokenExpiresAt)).foregroundStyle(.secondary)
                         }
+                        Divider()
+                        cliRow
                     } else {
                         PrefRow(label: "Login", detail: "Read-only: GrokGauge reads Grok Bot's local usage cache, not its login") {
                             Text("Not used").foregroundStyle(.secondary)
@@ -483,6 +485,24 @@ struct DiagnosticsTab: View {
             }
         }
         .onAppear { expiry = tokenExpiry() }
+    }
+
+    /// Grok CLI setup state, with the next step when something's missing.
+    @ViewBuilder private var cliRow: some View {
+        switch store.cliState() {
+        case .notInstalled:
+            PrefRow(label: "Grok CLI", detail: "Needed for Grok usage (Grok Bot works without it). Install: \(GrokCLISetup.installCommand)") {
+                Button("Copy Install Command") { Launcher.copyInstallCommand() }
+                Button("Install in Terminal…") { Launcher.installCLIInTerminal() }
+            }
+        case .signedOut:
+            PrefRow(label: "Grok CLI", detail: "Installed, not signed in. Run “grok login” (or “\(GrokCLISetup.fallbackLoginCommand)”).") {
+                Button("Copy “grok login”") { Launcher.copyLoginCommand() }
+                Button("Open Terminal") { Launcher.openTerminal() }
+            }
+        case .signedIn:
+            PrefRow(label: "Grok CLI") { Text("Signed in").foregroundStyle(.secondary) }
+        }
     }
 
     private func newsDetail(_ s: SourceDiagnostics) -> String? {
@@ -524,6 +544,7 @@ enum Diagnostics {
             "Refresh: \(settings.refreshInterval.title)",
             "Shortcut: \(settings.hotKey.enabled ? settings.hotKey.display : "off")",
             "Update check: \(settings.checkForUpdates ? "on" : "off")",
+            "Grok CLI: \(store.cliState().summary)",
             "What's new: \(settings.showsWhatsNewSection ? "shown" : "hidden"), \(settings.whatsNew.interval.rawValue)h, notify \(settings.whatsNew.notify ? "on" : "off")",
         ]
         if let next = store.nextRetry { summary.append("Next retry: \(DiagnosticsReport.stamp(next))") }
