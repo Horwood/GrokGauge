@@ -4,7 +4,7 @@ import Foundation
 
 /// The sections of the dropdown, in their default order.
 public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiable {
-    case grokRing, grokBotRing, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
+    case grokRing, grokBotRing, serviceStatus, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
 
     public var id: String { rawValue }
 
@@ -12,6 +12,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         switch self {
         case .grokRing: return "Grok ring"
         case .grokBotRing: return "Grok Bot ring"
+        case .serviceStatus: return "Service status"
         case .historyPace: return "History & pace"
         case .resetDates: return "Reset dates"
         case .productBreakdown: return "Grok by product"
@@ -26,6 +27,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         switch self {
         case .grokRing: return "circle.circle"
         case .grokBotRing: return "sparkles"
+        case .serviceStatus: return "dot.radiowaves.left.and.right"
         case .historyPace: return "chart.xyaxis.line"
         case .resetDates: return "calendar.badge.clock"
         case .productBreakdown: return "chart.bar.fill"
@@ -268,6 +270,8 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public var whatsNew: WhatsNewSettings
     /// Which products "Grok by product" shows, their order and the sort (added in 0.9.2).
     public var productBreakdown: ProductBreakdownSettings
+    /// xAI and Cursor status dots (added in 0.9.2).
+    public var serviceStatus: ServiceStatusSettings
 
     // Menu bar
     public var menuBarMode: MenuBarMode
@@ -296,6 +300,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
                 showGrokBotHistory: Bool = true,
                 whatsNew: WhatsNewSettings = .standard,
                 productBreakdown: ProductBreakdownSettings = .standard,
+                serviceStatus: ServiceStatusSettings = .standard,
                 menuBarMode: MenuBarMode = .highest,
                 showDaysToReset: Bool = false,
                 hideLogo: Bool = false,
@@ -315,6 +320,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         self.showGrokBotHistory = showGrokBotHistory
         self.whatsNew = whatsNew
         self.productBreakdown = productBreakdown
+        self.serviceStatus = serviceStatus
         self.menuBarMode = menuBarMode
         self.showDaysToReset = showDaysToReset
         self.hideLogo = hideLogo
@@ -344,6 +350,11 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     /// Whether the What's new section is drawn: its checkbox is on and at least one source is chosen.
     public var showsWhatsNewSection: Bool {
         isVisible(.whatsNew) && !whatsNew.enabled.isEmpty
+    }
+
+    /// Whether the status row is drawn: its checkbox is on and at least one source is chosen.
+    public var showsServiceStatus: Bool {
+        isVisible(.serviceStatus) && !serviceStatus.enabled.isEmpty
     }
 
     /// Whether the history section is drawn: its own checkbox is on and at least one graph is chosen.
@@ -392,7 +403,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: missing keys fall back to defaults, unknown values are ignored)
 
     enum CodingKeys: String, CodingKey {
-        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, whatsNew, productBreakdown, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
+        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, whatsNew, productBreakdown, serviceStatus, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
              colors, notificationsLinked, notificationThresholds, refreshInterval, checkForUpdates, modifiedAt
     }
 
@@ -413,6 +424,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
             whatsNew: value(.whatsNew, d.whatsNew),
             // Added in 0.9.2: older settings get all products shown, canonical order, My order.
             productBreakdown: value(.productBreakdown, d.productBreakdown),
+            serviceStatus: value(.serviceStatus, d.serviceStatus),
             menuBarMode: value(.menuBarMode, d.menuBarMode),
             showDaysToReset: value(.showDaysToReset, d.showDaysToReset),
             hideLogo: value(.hideLogo, d.hideLogo),
@@ -446,6 +458,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         try c.encode(showGrokBotHistory, forKey: .showGrokBotHistory)
         try c.encode(whatsNew, forKey: .whatsNew)
         try c.encode(productBreakdown, forKey: .productBreakdown)
+        try c.encode(serviceStatus, forKey: .serviceStatus)
         try c.encode(menuBarMode, forKey: .menuBarMode)
         try c.encode(showDaysToReset, forKey: .showDaysToReset)
         try c.encode(hideLogo, forKey: .hideLogo)

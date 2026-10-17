@@ -42,6 +42,7 @@ struct PopoverView: View {
     @ObservedObject var updates: UpdateMonitor
     @ObservedObject var whatsNew: WhatsNewStore
     @ObservedObject var sizing: PopoverSizing
+    @ObservedObject var status: ServiceStatusStore = .preview([:])
     var openPreferences: () -> Void = {}
 
     private var settings: GaugeSettings { settingsStore.settings }
@@ -83,6 +84,8 @@ struct PopoverView: View {
                 if settings.showGrokHistory || (settings.showGrokBotHistory && bot) { out.append(.section(item.id)) }
             case .whatsNew:
                 if settings.showsWhatsNewSection { out.append(.section(item.id)) }
+            case .serviceStatus:
+                if settings.showsServiceStatus { out.append(.section(item.id)) }
             default:
                 out.append(.section(item.id))
             }
@@ -192,6 +195,8 @@ struct PopoverView: View {
             if let s = store.snapshot { CreditsCard(snapshot: s) }
         case .whatsNew:
             WhatsNewCard(store: whatsNew, settings: settings.whatsNew, now: now)
+        case .serviceStatus:
+            ServiceStatusCard(store: status, sources: settings.serviceStatus.enabled)
         case .refreshRow:
             RefreshRow(store: store, now: now)
         case .actions:
@@ -860,6 +865,51 @@ private struct CardBackground: ViewModifier {
 
 extension View {
     func card() -> some View { modifier(CardBackground()) }
+}
+
+// MARK: - Service status
+
+/// xAI and Cursor status dots. Each row opens that status page; the tooltip has details and the check time.
+private struct ServiceStatusCard: View {
+    @ObservedObject var store: ServiceStatusStore
+    let sources: [ServiceSource]
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(sources) { s in
+                let st = store.state(s)
+                Button { store.open(s) } label: {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(st.health.level.map { palette.color($0) } ?? Color.secondary.opacity(0.5))
+                            .frame(width: 8, height: 8)
+                        Text(text(s, st))
+                            .font(.callout)
+                            .foregroundStyle(st.health == .normal || st.health == .unknown ? .secondary : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Spacer(minLength: 4)
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(store.detail(s))
+                .accessibilityLabel("\(s.title) service status")
+                .accessibilityValue(store.detail(s))
+                .accessibilityHint("Opens \(s.pageURL.host ?? "the status page")")
+            }
+        }
+        .card()
+    }
+
+    private func text(_ s: ServiceSource, _ st: ServiceStatusStore.SourceState) -> String {
+        if st.lastError != nil { return "\(s.title): Status unavailable" }
+        return st.report?.line ?? "\(s.title): Checking…"
+    }
 }
 
 private struct ProductBreakdown: View {

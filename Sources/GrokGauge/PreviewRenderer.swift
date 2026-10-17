@@ -32,13 +32,15 @@ enum PreviewRenderer {
         let settings = SettingsStore.preview()
         let whatsNew = demo ? WhatsNewStore.preview(WhatsNewStore.demoState()) : WhatsNewStore.savedPreview()
         let suffix = demo ? "-demo" : ""
+        // Real runs read the live public status pages once; demo runs show both services normal.
+        let status = demo ? ServiceStatusStore.demo() : await ServiceStatusStore.fetchedOnce()
         var ok = true
 
         for scheme in [ColorScheme.dark, .light] {
             let name = scheme == .dark ? "dark" : "light"
             let view = PopoverView(store: store, settingsStore: settings, history: historyStore,
                                    updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
-                                   sizing: PopoverSizing())
+                                   sizing: PopoverSizing(), status: status)
             ok = renderView(view, scheme: scheme, background: true,
                             to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
@@ -85,7 +87,7 @@ enum PreviewRenderer {
             for (name, s, st) in variants + styles {
                 let view = PopoverView(store: st, settingsStore: SettingsStore.preview(s), history: historyStore,
                                        updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
-                                   sizing: PopoverSizing())
+                                   sizing: PopoverSizing(), status: status)
                 ok = renderView(view, scheme: .dark, background: true,
                                 to: dir.appendingPathComponent("popover-\(name)-dark-demo.png")) && ok
             }
@@ -97,7 +99,7 @@ enum PreviewRenderer {
             let visible = 800.0 - 25          // minus the menu bar
             let short = PopoverView(store: store, settingsStore: SettingsStore.preview(), history: historyStore,
                                     updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
-                                    sizing: PopoverSizing(maxHeight: CGFloat(PopoverLayout.maxContentHeight(visibleHeight: visible))))
+                                    sizing: PopoverSizing(maxHeight: CGFloat(PopoverLayout.maxContentHeight(visibleHeight: visible))), status: status)
             ok = renderView(short, scheme: .dark, background: true,
                             to: dir.appendingPathComponent("popover-short-screen-dark-demo.png")) && ok
         }
@@ -132,7 +134,7 @@ enum PreviewRenderer {
         for tab in PrefsTab.allCases {
             let view = PreferencesView(settingsStore: prefsSettings, store: store, updates: updates,
                                        loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared, whatsNew: whatsNew,
-                                       history: prefsHistory, tab: tab, scrollable: false, tokenExpiry: { expiry })
+                                       history: prefsHistory, status: status, tab: tab, scrollable: false, tokenExpiry: { expiry })
             ok = renderView(view, scheme: .dark, background: true,
                             to: dir.appendingPathComponent("prefs-\(tab.rawValue)\(suffix).png")) && ok
             if tab == .about || tab == .whatsNew {
@@ -152,14 +154,29 @@ enum PreviewRenderer {
             let customStore = SettingsStore.preview(custom)
             let pop = PopoverView(store: store, settingsStore: customStore, history: historyStore,
                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
-                                  sizing: PopoverSizing())
+                                  sizing: PopoverSizing(), status: status)
             ok = renderView(exampleLabeled(pop), scheme: .dark, background: true,
                             to: dir.appendingPathComponent("popover-products-sorted-example.png")) && ok
             let prefs = PreferencesView(settingsStore: customStore, store: store, updates: updates,
                                         loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared, whatsNew: whatsNew,
-                                        history: prefsHistory, tab: .layout, scrollable: false, tokenExpiry: { expiry })
+                                        history: prefsHistory, status: status, tab: .layout, scrollable: false, tokenExpiry: { expiry })
             ok = renderView(exampleLabeled(prefs), scheme: .dark, background: true,
                             to: dir.appendingPathComponent("prefs-layout-products-example.png")) && ok
+        }
+
+        if demo {
+            // The status row during an incident: labeled "Example data" because these readings are made up.
+            let now = Date().addingTimeInterval(-60)
+            let outage = ServiceStatusStore.demo(
+                xai: ServiceStatusReport(source: .xai, health: .degraded, affected: ["Imagine"], incidents: ["Imagine generations slow"],
+                                         via: ServiceSource.xai.summaryURL, checkedAt: now),
+                cursor: ServiceStatusReport(source: .cursor, health: .outage, affected: ["Cloud Agents"], pageDescription: "Partial System Outage",
+                                            incidents: ["Cloud Agents failing to start"], via: ServiceSource.cursor.summaryURL, checkedAt: now))
+            let pop = PopoverView(store: store, settingsStore: SettingsStore.preview(), history: historyStore,
+                                  updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                  sizing: PopoverSizing(), status: outage)
+            ok = renderView(exampleLabeled(pop), scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("popover-status-outage-example.png")) && ok
         }
 
         let g = snapshot.roundedPercent

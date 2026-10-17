@@ -93,6 +93,16 @@ final class UsageNotifier: NSObject, UNUserNotificationCenterDelegate {
         center.add(request)
     }
 
+    /// A status page went from normal to an outage (only when the user turned this on).
+    func postServiceOutage(_ report: ServiceStatusReport) {
+        let content = UNMutableNotificationContent()
+        content.title = "\(report.source.title) outage"
+        content.body = "\(report.summary). Click the status dot in GrokGauge for details."
+        content.sound = .default
+        let id = "grokgauge.status.\(report.source.rawValue).\(Int(report.checkedAt.timeIntervalSince1970))"
+        center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+    }
+
     // Show banners even though GrokGauge is technically "frontmost" while its popover is open.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification) async

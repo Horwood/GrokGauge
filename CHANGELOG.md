@@ -30,6 +30,19 @@ dates are when the version was built.
   the end, shown. Unchecking every product hides the section. The choices are part of your settings, so they
   go into Export/Import and settings sync; settings from older versions get every product, the standard
   order and My order. **Reset Layout to Default** resets them too.
+- **Service status row.** Two dots in the dropdown, right under the rings: **xAI** (`data.x.ai/status/summary.json`,
+  falling back to the `status.x.ai/feed.xml` RSS if the summary fails or changes shape) and **Cursor**
+  (`status.cursor.com/api/v2/summary.json`, the home of Grok Bot and Cloud Agents, which are named first when
+  affected). Green "All systems normal"; orange for degraded, partial outage or maintenance; red for an outage;
+  gray when a check failed. The text names what's affected (`xAI: Degraded: Imagine`,
+  `Cursor: Outage: Cloud Agents`); the tooltip and VoiceOver label add the details and last check time;
+  clicking opens status.x.ai or status.cursor.com. Checked about every 5 minutes and when the dropdown opens
+  (at most every 30 s), backing off after failures (5, 10, 20, then 30 min). Public pages only, no login.
+- Settings › Layout: a **Service status** section (on by default, reorderable) with **xAI** and **Cursor**
+  switches and an optional, off-by-default notification when a service goes from normal to an outage. The
+  choices sync with your other settings; settings from older versions get both dots on and the row placed
+  after the rings. Settings › Diagnostics › **Service status** shows each source's last result, error and URL.
+  New `--print-status` debug flag.
 - **Guided Grok CLI setup.** When the Grok CLI isn't installed, the dropdown says so (instead of only
   "run `grok login`", which fails with "command not found") and offers **Copy install command**
   (`curl -fsSL https://x.ai/cli/install.sh | bash`, xAI's official installer), **Install in Terminal…**

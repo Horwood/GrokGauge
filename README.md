@@ -45,6 +45,13 @@ Features:
   from all your Macs.
 - **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
+- **Service status.** Two dots under the rings, one for [xAI](https://status.x.ai) and one for
+  [Cursor](https://status.cursor.com) (the home of Grok Bot and Cloud Agents): green "All systems normal",
+  orange for degraded, partial outage or maintenance, red for an outage, gray when the check failed. The text
+  names what's affected (`xAI: Degraded: Imagine`, `Cursor: Outage: Cloud Agents`), the tooltip has the
+  details and the last check time, and clicking a row opens that status page. Checked about every 5 minutes
+  and when you open the dropdown. Optional notification (off by default) when a service goes from normal to
+  an outage.
 - **Per-product breakdown** of the Grok pool: Chat, Imagine, Voice, Build, and API.
 - **Extra Usage Credits.** Your prepaid Grok credit balance (and on-demand spend, if you've enabled it).
 - **Heads-up notifications** when Grok or Grok Bot enters the warning and critical levels, once per week for each.
@@ -92,6 +99,11 @@ Features:
   <img src="docs/popover-whatsnew-dark-demo.png" width="300" alt="The What's new from xAI section: a Grok CLI update with a Copy button, an xAI news post, a Grok app update, unread dots and Mark all read">
 </p>
 <p align="center"><sub>“What's new from xAI” (sample items).</sub></p>
+
+<p align="center">
+  <img src="docs/popover-status-outage-example.png" width="300" alt="The service status row during an incident: an orange dot reading 'xAI: Degraded: Imagine' and a red dot reading 'Cursor: Outage: Cloud Agents'">
+</p>
+<p align="center"><sub>The service status row during an incident (example data; normally both dots are green).</sub></p>
 
 ## Requirements
 
@@ -181,14 +193,16 @@ Everything applies immediately.
 | <img src="docs/prefs-whatsNew-demo.png" width="400" alt="What's New tab"> | <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> |
 | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> | |
 
-- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, history & pace,
+- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, service status, history & pace,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
   rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
   choose whether the Grok and Grok Bot graphs appear (turning both off hides the section) and pick the
   **Graph style**: Bars (one bar per day, the default), Line, or Area. Under **Grok by product**, check
   which products appear (Chat, Imagine, Voice, Build, API, plus any product xAI adds later, which shows up
   at the end), drag them into your order, and pick a **Sort**: My order, Highest usage first (ties keep
-  your order) or Alphabetical; unchecking them all hides the section. Pick the ring style, and
+  your order) or Alphabetical; unchecking them all hides the section. Under **Service status**, choose
+  the **xAI** and **Cursor** dots (both on by default; turning both off hides the row) and the optional
+  outage notification. Pick the ring style, and
   choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
 - **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
   green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.
@@ -312,10 +326,24 @@ as `GrokGauge/<version> (macOS menu bar)`. Hosts contacted, only for the sources
 - Items and read marks stay in `~/Library/Application Support/GrokGauge/whatsnew.json` (never synced).
 - X isn't read (that needs an account); the section links to the @xai and @grok profiles instead.
 
+### Service status
+
+Public status pages only: no login, no API key, no cookies, nothing about you. Requests identify themselves
+as `GrokGauge/<version> (macOS menu bar)`. Only the sources you leave on are checked, about every 5 minutes
+and when you open the dropdown (at most every 30 s); failures back off (5 min, 10, 20, then every 30).
+
+| Dot | URL | Fallback |
+|---|---|---|
+| xAI | `data.x.ai/status/summary.json` (the data behind status.x.ai) | `status.x.ai/feed.xml` (RSS of incidents) if the summary fails or changes shape |
+| Cursor | `status.cursor.com/api/v2/summary.json` (Statuspage's public API) | none: the dot turns gray |
+
+Nothing is stored on disk; Settings › Diagnostics › **Service status** shows each source's last result,
+error and the URL used.
+
 ### Everything
 
-- No analytics, no telemetry. Besides xAI, GitHub (update check) and the What's new hosts above,
-  GrokGauge talks to no servers.
+- No analytics, no telemetry. Besides xAI, GitHub (update check), the What's new hosts and the two
+  status pages above, GrokGauge talks to no servers.
 
 ## How it works (and the fine print)
 
@@ -384,6 +412,7 @@ Want the raw numbers? Run the app binary with a debug flag. None of them print y
 ```sh
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-usage   # Grok + Grok Bot; or --json
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-status  # check the xAI and Cursor status pages once
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-preview ~/Desktop/gg --demo   # dropdown, menu bar and Settings PNGs
 ```
 

@@ -24,6 +24,14 @@ if arguments.contains("--print-usage") || arguments.contains("--json") {
     dispatchMain()
 }
 
+if arguments.contains("--print-status") {
+    Task { @MainActor in
+        let code = await DebugCLI.printStatus()
+        exit(code)
+    }
+    dispatchMain()
+}
+
 if let i = arguments.firstIndex(of: "--render-preview"), i + 1 < arguments.count {
     // Developer aid for README screenshots: renders the popover + menu bar item to PNGs
     // without needing Screen Recording permission. Add --demo for sample data.
@@ -50,6 +58,7 @@ if arguments.contains("--help") || arguments.contains("-h") {
       GrokGauge                 Launch the menu bar app
       GrokGauge --print-usage   Print Grok + Grok Bot usage once (never prints tokens)
       GrokGauge --json          Same, as JSON
+      GrokGauge --print-status  Check the public xAI and Cursor status pages once
       GrokGauge --refresh-now   Renew the Grok login now (prints expiry times only)
       GrokGauge --render-preview DIR [--demo]   Write dropdown, menu bar and Settings PNGs (for docs)
       GrokGauge --version

@@ -39,6 +39,7 @@ struct PreferencesView: View {
     @ObservedObject var hotKeys: HotKeyCenter
     @ObservedObject var whatsNew: WhatsNewStore
     @ObservedObject var history: HistoryStore
+    @ObservedObject var status: ServiceStatusStore = .preview([:])
     @ViewState var tab: PrefsTab = .layout
     /// false when rendering previews: lays everything out at full height instead of scrolling.
     var scrollable = true
@@ -70,7 +71,7 @@ struct PreferencesView: View {
             case .colors: colorsTab
             case .whatsNew: WhatsNewPrefs(settings: settings, store: whatsNew)
             case .sync: syncTab
-            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, history: history, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
+            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, history: history, status: status, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
             case .about: aboutTab
             }
         }
@@ -111,6 +112,21 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
                 .disabled(!settingsStore.settings.showGrokHistory && !settingsStore.settings.showGrokBotHistory)
             }
+            PrefGroup(title: "Service status",
+                      footer: "Dots for the public xAI (status.x.ai) and Cursor (status.cursor.com) status pages, checked about "
+                        + "every 5 minutes and when you open the dropdown. No login; nothing about you is sent. Click a dot to open "
+                        + "the page. Cursor's page also covers Grok Bot and Cloud Agents.") {
+                Toggle("xAI (Grok, grok.com, API, Imagine, Voice)", isOn: settings.serviceStatus.xai)
+                    .padding(.vertical, 6)
+                Divider()
+                Toggle("Cursor (Grok Bot, Cloud Agents, IDE)", isOn: settings.serviceStatus.cursor)
+                    .padding(.vertical, 6)
+                Divider()
+                Toggle("Notify me when a service goes from normal to an outage", isOn: settings.serviceStatus.notify)
+                    .padding(.vertical, 6)
+                    .disabled(settingsStore.settings.serviceStatus.enabled.isEmpty)
+            }
+            .disabled(!settingsStore.settings.isVisible(.serviceStatus))
             PrefGroup(title: "Grok by product",
                       footer: "Check the products to show and drag (or use the arrows) to set My order. "
                         + "Other sorts fall back to My order for ties. Products xAI adds later appear at the end, shown. "
@@ -488,16 +504,18 @@ struct DiagnosticsTab: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var whatsNew: WhatsNewStore
     @ObservedObject var history: HistoryStore
+    @ObservedObject var status: ServiceStatusStore
     let settings: GaugeSettings
     let tokenExpiry: () -> Date?
     @ViewState var expiry: Date? = nil
     @ViewState var copied = false
 
     var body: some View {
-        let report = Diagnostics.report(store: store, whatsNew: whatsNew, history: history, settings: settings, tokenExpiry: expiry)
+        let report = Diagnostics.report(store: store, whatsNew: whatsNew, history: history, status: status, settings: settings, tokenExpiry: expiry)
         let news = Set(NewsSource.allCases.map(\.title))
+        let statusRows = Set(ServiceSource.allCases.map { "\($0.title) status" })
         Group {
-            ForEach(report.sources.filter { !news.contains($0.name) }, id: \.name) { s in
+            ForEach(report.sources.filter { !news.contains($0.name) && !statusRows.contains($0.name) }, id: \.name) { s in
                 PrefGroup(title: s.name) {
                     PrefRow(label: "Status") { Text(s.status).foregroundStyle(.secondary) }
                     Divider()
@@ -531,6 +549,7 @@ struct DiagnosticsTab: View {
                     }
                 }
             }
+            statusGroup
             historyGroup
             PrefGroup(title: "This Mac", footer: "The report never includes tokens, emails, account ids, or file paths.") {
                 PrefRow(label: "GrokGauge") { Text(report.appVersion).foregroundStyle(.secondary) }
@@ -547,6 +566,29 @@ struct DiagnosticsTab: View {
             }
         }
         .onAppear { expiry = tokenExpiry() }
+    }
+
+    /// Service status: last result, error and the URL used, per source.
+    @ViewBuilder private var statusGroup: some View {
+        PrefGroup(title: "Service status", footer: "Public status pages, no login. Checked every 5 min; failed checks retry after 5, 10, 20, then every 30 min.") {
+            ForEach(Array(ServiceSource.allCases.enumerated()), id: \.element) { i, s in
+                let st = status.state(s)
+                if i > 0 { Divider() }
+                PrefRow(label: s.title, detail: statusDetail(s, st)) {
+                    Text(!settings.serviceStatus.isOn(s) ? "Off" : st.lastError != nil ? "⚠︎ \(st.lastError!)" : st.report?.summary ?? "Not checked yet")
+                        .foregroundStyle(.secondary).multilineTextAlignment(.trailing).lineLimit(2)
+                }
+            }
+        }
+    }
+
+    private func statusDetail(_ s: ServiceSource, _ st: ServiceStatusStore.SourceState) -> String {
+        var parts: [String] = []
+        if let r = st.report { parts.append("Checked \(Self.time(r.checkedAt))") }
+        if let at = st.lastErrorAt { parts.append("Failed \(Self.time(at))") }
+        if let f = st.fallbackReason { parts.append("Summary failed (\(f)), used the RSS feed") }
+        parts.append((st.lastURL ?? s.summaryURL).absoluteString)
+        return parts.joined(separator: " · ")
     }
 
     /// History sync: folder, Macs, last sync, and any file that had to be skipped.
@@ -621,7 +663,7 @@ struct DiagnosticsTab: View {
 enum Diagnostics {
     @MainActor
     static func report(store: UsageStore, whatsNew: WhatsNewStore? = nil, history: HistoryStore? = nil,
-                       settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
+                       status: ServiceStatusStore? = nil, settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
         let grokStatus: String
         if let p = store.problem { grokStatus = p.title } else if store.snapshot != nil {
             grokStatus = store.snapshot?.percentInferred == true ? "OK (percent inferred as 0)" : "OK"
@@ -644,6 +686,7 @@ enum Diagnostics {
             "Shortcut: \(settings.hotKey.enabled ? settings.hotKey.display : "off")",
             "Update check: \(settings.checkForUpdates ? "on" : "off")",
             "Grok CLI: \(store.cliState().summary)",
+            "Service status: \(settings.showsServiceStatus ? settings.serviceStatus.enabled.map(\.title).joined(separator: ", ") : "off")\(settings.serviceStatus.notify ? ", notify on" : "")",
             "What's new: \(settings.showsWhatsNewSection ? "shown" : "hidden"), \(settings.whatsNew.interval.rawValue)h, notify \(settings.whatsNew.notify ? "on" : "off")",
         ]
         if let h = history?.sync { summary.append("History sync: \(historySyncSummary(h))") }
@@ -659,7 +702,7 @@ enum Diagnostics {
                 SourceDiagnostics(name: "Grok Bot", status: store.hasGrokBot ? botStatus : "Not installed",
                                   lastSuccess: store.botLastSuccess,
                                   lastError: store.botLastError?.message, lastErrorAt: store.botLastError?.at),
-            ] + (whatsNew?.diagnostics() ?? []),
+            ] + (whatsNew?.diagnostics() ?? []) + (status?.diagnostics() ?? []),
             settingsSummary: summary)
     }
 }

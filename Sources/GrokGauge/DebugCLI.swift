@@ -3,6 +3,24 @@ import GrokGaugeCore
 
 /// `GrokGauge --print-usage`: one fetch, human-readable output. The token is never printed.
 enum DebugCLI {
+    /// `GrokGauge --print-status`: one check of the public xAI and Cursor status pages (no login involved).
+    @MainActor
+    static func printStatus() async -> Int32 {
+        let store = await ServiceStatusStore.fetchedOnce()
+        var failed = false
+        for source in ServiceSource.allCases {
+            let st = store.state(source)
+            if let e = st.lastError {
+                failed = true
+                print("\(source.title): unknown (\(e)) via \(st.lastURL?.absoluteString ?? "-")")
+            } else if let r = st.report {
+                print("\(r.line) via \(r.via.absoluteString)" + (st.fallbackReason.map { " (summary failed: \($0))" } ?? ""))
+                if !r.incidents.isEmpty { print("  incidents: " + r.incidents.joined(separator: "; ")) }
+            }
+        }
+        return failed ? 1 : 0
+    }
+
     static func printUsage(json: Bool) async -> Int32 {
         let botResult = Result { try GrokBotUsageReader.read() }
         let grokCode = await printGrok(json: json, bot: botResult)

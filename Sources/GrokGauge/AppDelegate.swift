@@ -17,6 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var whatsNew = WhatsNewStore(
         settings: { [unowned self] in self.settingsStore.settings.whatsNew },
         notify: { [unowned self] items in self.notifier.postWhatsNew(items) })
+    private lazy var serviceStatus = ServiceStatusStore(
+        settings: { [unowned self] in self.settingsStore.settings.serviceStatus },
+        notify: { [unowned self] report in self.notifier.postServiceOutage(report) })
     private let sizing = PopoverSizing()
     private let loginItem = LaunchAtLogin()
     private var preferences: PreferencesWindowController?
@@ -34,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.setAccessibilityLabel("GrokGauge")
         }
 
-        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew, sizing: sizing) { [weak self] in
+        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew, sizing: sizing, status: serviceStatus) { [weak self] in
             self?.openPreferences()
         }
         let host = NSHostingController(rootView: root)
@@ -45,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         preferences = PreferencesWindowController { [unowned self] in
             PreferencesView(settingsStore: settingsStore, store: store, updates: updates, loginItem: loginItem,
-                            hotKeys: HotKeyCenter.shared, whatsNew: whatsNew, history: history, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
+                            hotKeys: HotKeyCenter.shared, whatsNew: whatsNew, history: history, status: serviceStatus, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
         }
         MainMenu.install(target: self, settingsAction: #selector(openPreferencesAction(_:)))
 
@@ -85,6 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusItem()
         store.start()
         whatsNew.start()
+        serviceStatus.start()
     }
 
     /// Applies settings that drive non-SwiftUI parts: timers, the shortcut, the update check.
@@ -103,6 +107,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A source switched on (or a shorter interval) after launch: check what's now due.
         if let old, old.whatsNew != s.whatsNew || old.showsWhatsNewSection != s.showsWhatsNewSection {
             whatsNew.checkDue()
+        }
+        // A status source switched on: check it now rather than in 5 minutes.
+        if let old, old.serviceStatus.enabled != s.serviceStatus.enabled || old.showsServiceStatus != s.showsServiceStatus {
+            serviceStatus.refreshIfStale()
         }
     }
 
@@ -221,6 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             loginItem.refresh()
             store.refreshIfStale()
             history.refreshFromFolder()
+            if settingsStore.settings.showsServiceStatus { serviceStatus.refreshIfStale() }
             updatePopoverSizing()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate()
