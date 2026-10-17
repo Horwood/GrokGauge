@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         preferences = PreferencesWindowController { [unowned self] in
             PreferencesView(settingsStore: settingsStore, store: store, updates: updates, loginItem: loginItem,
-                            hotKeys: HotKeyCenter.shared, whatsNew: whatsNew, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
+                            hotKeys: HotKeyCenter.shared, whatsNew: whatsNew, history: history, tokenExpiry: { [weak self] in self?.store.grokTokenExpiry() })
         }
         MainMenu.install(target: self, settingsAction: #selector(openPreferencesAction(_:)))
 
@@ -70,8 +70,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         HotKeyCenter.shared.action = { [weak self] in self?.togglePopover(nil) }
 
+        // History sync follows the settings-sync folder, or a MacSyncing folder found automatically.
+        Publishers.CombineLatest(settingsStore.$syncFolder, settingsStore.$suggestedFolder)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] syncFolder, suggested in
+                self?.history.updateFolders(settingsSync: syncFolder, detected: suggested)
+            }
+            .store(in: &cancellables)
+
         notifier.requestAuthorization()
         settingsStore.start()
+        settingsStore.findSuggestedFolder()
         apply(settingsStore.settings)
         updateStatusItem()
         store.start()
@@ -211,6 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             loginItem.refresh()
             store.refreshIfStale()
+            history.refreshFromFolder()
             updatePopoverSizing()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate()

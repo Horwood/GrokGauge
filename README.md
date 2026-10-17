@@ -41,7 +41,8 @@ Features:
 - **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
 - **History & pace.** A 7-day graph for each source: one bar per day with the highest % reached that day
   (or a line or area graph, your pick), plus a projection: "On track (≈40% at reset)"
-  or "At this pace you'll hit 100% by Fri 3 PM".
+  or "At this pace you'll hit 100% by Fri 3 PM". With a sync folder, the graphs combine readings
+  from all your Macs.
 - **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
 - **Per-product breakdown** of the Grok pool: Chat, Imagine, Voice, Build, and API.
@@ -224,8 +225,18 @@ already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
 - The newest change wins (by the time it was made). Changes made while a Mac is offline are resolved
   the same way when it comes back.
 - **Only preferences sync**: layout, menu bar, levels, colors, notification levels, refresh interval,
-  shortcut, and the update-check switch. Never your Grok login, tokens, usage numbers, or history.
+  shortcut, and the update-check switch. Never your Grok login or tokens (history has its own files, below).
 - The folder choice itself stays on each Mac, so each one can point at its own path.
+
+**Usage history** (the 7-day graphs) syncs too, through the same folder. If you haven't picked one,
+GrokGauge looks for a `MacSyncing` folder in your cloud-drive folders; you can also choose a folder or
+iCloud Drive under *Settings › Sync › Usage history*, or switch **Sync history across Macs** off.
+
+- Each Mac writes only its own file, `GrokGauge/history/<machine-id>.json`, and merges everyone's. Usage is
+  account-wide, so matching readings are combined by taking the highest, never added.
+- Conflict copies from Insync or Drive are merged; damaged files are skipped and shown in
+  *Settings › Diagnostics*, along with the folder, the number of Macs and the last sync.
+- With no folder, history stays on the Mac as before.
 
 ## Privacy
 
@@ -265,9 +276,11 @@ already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
 
 - **Settings sync** writes only `GrokGauge/settings.json` in the folder you choose, containing
   preferences only (no tokens, emails, ids, usage, or history). Nothing is synced until you pick a folder.
-- **History** for the graphs stays on your Mac in
-  `~/Library/Application Support/GrokGauge/history.json`: timestamps and percents only, pruned after
-  8 days, never synced or sent anywhere.
+- **History** for the graphs is kept in `~/Library/Application Support/GrokGauge/history.json`:
+  timestamps and percents only, pruned after 8 days. With history sync on and a sync folder available, a
+  copy goes to `GrokGauge/history/<machine-id>.json` in that folder, containing only those percents and
+  timestamps, an anonymous per-Mac id (a hash, not the hardware UUID itself) and the Mac's name. Never
+  tokens, emails, account ids, or anything from `~/.grok`. It's never sent anywhere else.
 - **Update check** (optional, daily) asks GitHub's public API for the latest
   [stevencombs/GrokGauge](https://github.com/stevencombs/GrokGauge/releases) release. It's unauthenticated
   and sends no identifiers besides a `GrokGauge/<version>` User-Agent.

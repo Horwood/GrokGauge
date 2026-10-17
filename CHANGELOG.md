@@ -5,7 +5,25 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-17
+
 ### Added
+- **Usage history synced across your Macs.** The 7-day graphs now show readings from every Mac, not just
+  this one. Each Mac writes only its own small file, `<sync folder>/GrokGauge/history/<machine-id>.json`
+  (written atomically), and reads and merges everyone's. Usage is account-wide, so readings for the same
+  product in the same 10-minute window are combined by taking the highest, never added; Grok and Grok Bot
+  stay separate, entries older than the 8-day window are dropped, and a lone dip from one Mac's slightly
+  older reading isn't drawn as a reset. The files hold only percentages, timestamps, an anonymous per-Mac id
+  (a hash of the hardware UUID) and the Mac's name — never tokens or anything from `~/.grok`.
+- The sync folder is the one Settings › Sync already uses; if none is set, GrokGauge looks for a `MacSyncing`
+  folder in your cloud-drive folders (Google Drive, Insync, Dropbox…). Settings › Sync › **Usage history** has
+  a **Sync history across Macs** switch (on by default; it does nothing until there's a folder), **Change…**,
+  **Use iCloud Drive**, the number of Macs and the last sync, plus **Sync Now**. With no folder, history stays
+  on this Mac exactly as before.
+- GrokGauge watches the history folder (and re-reads it every minute and whenever the dropdown opens), so
+  other Macs' readings appear on their own. Insync/Drive conflict copies are merged; partial, corrupt or
+  foreign files are skipped (never deleted) and listed in Settings › Diagnostics › **History sync**, with the
+  folder, the number of Macs and the last sync time.
 - **Guided Grok CLI setup.** When the Grok CLI isn't installed, the dropdown says so (instead of only
   "run `grok login`", which fails with "command not found") and offers **Copy install command**
   (`curl -fsSL https://x.ai/cli/install.sh | bash`, xAI's official installer), **Install in Terminal…**
@@ -25,6 +43,13 @@ dates are when the version was built.
 - **Support GrokGauge:** a Tip via PayPal button in Settings › About, a **Support GrokGauge…** link in the
   dropdown footer and the app menu, a PayPal badge in the README, and `.github/FUNDING.yml` (GitHub's
   Sponsor button).
+
+### Changed
+- The dropdown's gear opens a **Settings… / Quit GrokGauge** menu, like ClipGauge.
+
+### Fixed
+- The dropdown could be taller than the screen (graphs cut off, no scrolling). It's now capped to the screen;
+  the middle sections scroll.
 
 ## [0.9.1] - 2026-10-08
 

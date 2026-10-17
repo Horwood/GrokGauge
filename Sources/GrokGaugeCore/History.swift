@@ -13,8 +13,10 @@ public struct UsageSample: Codable, Equatable, Sendable {
     }
 }
 
-/// Local usage samples for the 7-day sparklines. Stored in
-/// `~/Library/Application Support/GrokGauge/history.json`. Never synced.
+/// This Mac's usage samples for the 7-day graphs. Stored in
+/// `~/Library/Application Support/GrokGauge/history.json`. With "Sync history across Macs" on, a copy goes to
+/// `<sync folder>/GrokGauge/history/<machine-id>.json` and the graphs show every Mac's samples merged
+/// (see `HistorySync`).
 public struct UsageHistory: Codable, Equatable, Sendable {
     public static let keep: TimeInterval = 8 * 86_400
     public static let maxSamplesPerSource = 1_500

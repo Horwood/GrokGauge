@@ -38,6 +38,7 @@ struct PreferencesView: View {
     @ObservedObject var loginItem: LaunchAtLogin
     @ObservedObject var hotKeys: HotKeyCenter
     @ObservedObject var whatsNew: WhatsNewStore
+    @ObservedObject var history: HistoryStore
     @ViewState var tab: PrefsTab = .layout
     /// false when rendering previews: lays everything out at full height instead of scrolling.
     var scrollable = true
@@ -69,7 +70,7 @@ struct PreferencesView: View {
             case .colors: colorsTab
             case .whatsNew: WhatsNewPrefs(settings: settings, store: whatsNew)
             case .sync: syncTab
-            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
+            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, history: history, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
             case .about: aboutTab
             }
         }
@@ -281,7 +282,7 @@ struct PreferencesView: View {
     private var syncTab: some View {
         Group {
             PrefGroup(title: "Sync settings between Macs",
-                      footer: "GrokGauge keeps one small file, **GrokGauge/settings.json**, in this folder and watches it for changes. The newest change wins. Only preferences sync — never your Grok login, usage numbers, or history. The folder choice stays on this Mac.") {
+                      footer: "GrokGauge keeps one small file, **GrokGauge/settings.json**, in this folder and watches it for changes. The newest change wins. Only preferences go in it — never your Grok login. Usage history syncs separately (below). The folder choice stays on this Mac.") {
                 PrefRow(label: "Folder", detail: settingsStore.syncFolder.map(Self.abbreviate) ?? "Not syncing") {
                     Button(settingsStore.syncFolder == nil ? "Choose…" : "Change…") { settingsStore.chooseSyncFolder() }
                     if settingsStore.syncFolder != nil {
@@ -301,6 +302,7 @@ struct PreferencesView: View {
                     }
                 }
             }
+            historySyncGroup
             PrefGroup(title: "Back up or move settings", footer: "Exports the same JSON that sync uses. Importing counts as a change on this Mac.") {
                 PrefRow(label: "Settings file") {
                     Button("Export…") { settingsStore.exportSettings() }
@@ -320,6 +322,44 @@ struct PreferencesView: View {
             }
         }
         .onAppear { settingsStore.findSuggestedFolder() }
+    }
+
+    private var historySyncGroup: some View {
+        let s = history.sync
+        return PrefGroup(title: "Usage history",
+                         footer: "Each Mac writes only its own small file, **GrokGauge/history/<this Mac>.json**, and the 7-day graphs merge every Mac's file. Usage is account-wide, so matching readings are combined (highest wins), not added. Only percentages, times and Mac names are written — never your Grok login or anything from ~/.grok. With no folder, history stays on this Mac.") {
+            PrefRow(label: "Sync history across Macs", detail: s.folder == nil ? "No sync folder found — history stays on this Mac" : nil) {
+                Toggle("", isOn: Binding(get: { history.sync.enabled }, set: { history.setEnabled($0) }))
+                    .toggleStyle(.switch).labelsHidden()
+            }
+            Divider()
+            PrefRow(label: "Folder", detail: s.folder.map { "\(Self.abbreviate($0)) · \(s.origin?.label ?? "")" } ?? "None") {
+                Button(s.folder == nil ? "Choose…" : "Change…") { history.chooseFolder() }
+                Menu("More") {
+                    Button("Use iCloud Drive") { history.useICloudDrive() }
+                    if history.hasChosenFolder {
+                        Button("Use Settings-Sync or Found Folder") { history.setChosenFolder(nil) }
+                    }
+                }
+                .fixedSize()
+            }
+            if s.isActive {
+                Divider()
+                PrefRow(label: "Status", detail: historyStatusDetail(s)) {
+                    Button("Sync Now") { history.syncNow() }
+                }
+            }
+        }
+    }
+
+    private func historyStatusDetail(_ s: HistoryStore.SyncStatus) -> String {
+        var parts: [String] = []
+        if let e = s.lastError { parts.append("⚠︎ \(e)") }
+        parts.append(s.machineCount == 1 ? "1 Mac" : "\(s.machineCount) Macs")
+        if !s.machineNames.isEmpty { parts[parts.count - 1] += " (\(s.machineNames.joined(separator: ", ")))" }
+        parts.append(s.lastSync.map { "synced \($0.formatted(date: .omitted, time: .shortened))" } ?? "not synced yet")
+        if !s.skipped.isEmpty { parts.append("⚠︎ skipped \(s.skipped.count) bad file\(s.skipped.count == 1 ? "" : "s") (see Diagnostics)") }
+        return parts.joined(separator: " · ")
     }
 
     private var syncStatusText: String {
@@ -427,13 +467,14 @@ private struct TabBar: View {
 struct DiagnosticsTab: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var whatsNew: WhatsNewStore
+    @ObservedObject var history: HistoryStore
     let settings: GaugeSettings
     let tokenExpiry: () -> Date?
     @ViewState var expiry: Date? = nil
     @ViewState var copied = false
 
     var body: some View {
-        let report = Diagnostics.report(store: store, whatsNew: whatsNew, settings: settings, tokenExpiry: expiry)
+        let report = Diagnostics.report(store: store, whatsNew: whatsNew, history: history, settings: settings, tokenExpiry: expiry)
         let news = Set(NewsSource.allCases.map(\.title))
         Group {
             ForEach(report.sources.filter { !news.contains($0.name) }, id: \.name) { s in
@@ -470,6 +511,7 @@ struct DiagnosticsTab: View {
                     }
                 }
             }
+            historyGroup
             PrefGroup(title: "This Mac", footer: "The report never includes tokens, emails, account ids, or file paths.") {
                 PrefRow(label: "GrokGauge") { Text(report.appVersion).foregroundStyle(.secondary) }
                 Divider()
@@ -485,6 +527,42 @@ struct DiagnosticsTab: View {
             }
         }
         .onAppear { expiry = tokenExpiry() }
+    }
+
+    /// History sync: folder, Macs, last sync, and any file that had to be skipped.
+    @ViewBuilder private var historyGroup: some View {
+        let s = history.sync
+        PrefGroup(title: "History sync", footer: s.isActive ? "Files GrokGauge can't read are skipped (never deleted); the rest still merge." : nil) {
+            PrefRow(label: "Status") {
+                Text(!s.enabled ? "Off" : s.folder == nil ? "Local only (no sync folder)" : s.lastError ?? "On")
+                    .foregroundStyle(.secondary)
+            }
+            if s.isActive {
+                Divider()
+                PrefRow(label: "Folder") {
+                    Text(s.folder.map(PreferencesView.abbreviate) ?? "—").foregroundStyle(.secondary)
+                        .lineLimit(2).multilineTextAlignment(.trailing).textSelection(.enabled)
+                }
+                Divider()
+                PrefRow(label: "Macs", detail: s.machineNames.isEmpty ? nil : s.machineNames.joined(separator: ", ")) {
+                    Text("\(s.machineCount)").foregroundStyle(.secondary)
+                }
+                Divider()
+                PrefRow(label: "Last sync") { Text(Self.time(s.lastSync)).foregroundStyle(.secondary) }
+                if !s.conflictCopies.isEmpty {
+                    Divider()
+                    PrefRow(label: "Conflict copies", detail: s.conflictCopies.joined(separator: ", ")) {
+                        Text("\(s.conflictCopies.count) merged").foregroundStyle(.secondary)
+                    }
+                }
+                ForEach(Array(s.skipped.enumerated()), id: \.offset) { _, skip in
+                    Divider()
+                    PrefRow(label: "Skipped file", detail: skip.fileName) {
+                        Text("⚠︎ \(skip.reason)").foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                    }
+                }
+            }
+        }
     }
 
     /// Grok CLI setup state, with the next step when something's missing.
@@ -522,7 +600,8 @@ struct DiagnosticsTab: View {
 
 enum Diagnostics {
     @MainActor
-    static func report(store: UsageStore, whatsNew: WhatsNewStore? = nil, settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
+    static func report(store: UsageStore, whatsNew: WhatsNewStore? = nil, history: HistoryStore? = nil,
+                       settings: GaugeSettings, tokenExpiry: Date?) -> DiagnosticsReport {
         let grokStatus: String
         if let p = store.problem { grokStatus = p.title } else if store.snapshot != nil {
             grokStatus = store.snapshot?.percentInferred == true ? "OK (percent inferred as 0)" : "OK"
@@ -547,6 +626,7 @@ enum Diagnostics {
             "Grok CLI: \(store.cliState().summary)",
             "What's new: \(settings.showsWhatsNewSection ? "shown" : "hidden"), \(settings.whatsNew.interval.rawValue)h, notify \(settings.whatsNew.notify ? "on" : "off")",
         ]
+        if let h = history?.sync { summary.append("History sync: \(historySyncSummary(h))") }
         if let next = store.nextRetry { summary.append("Next retry: \(DiagnosticsReport.stamp(next))") }
         return DiagnosticsReport(
             appVersion: AppInfo.version,
@@ -562,6 +642,19 @@ enum Diagnostics {
             ] + (whatsNew?.diagnostics() ?? []),
             settingsSummary: summary)
     }
+}
+
+/// e.g. "on, 3 Macs, last sync 2026-10-17T22:15:00Z, 1 skipped file". No paths or names (the report is shareable).
+@MainActor
+func historySyncSummary(_ s: HistoryStore.SyncStatus) -> String {
+    guard s.enabled else { return "off" }
+    guard s.isActive else { return "local only (no sync folder)" }
+    var parts = ["on (\(s.origin?.label ?? "folder"))", "\(s.machineCount) Mac\(s.machineCount == 1 ? "" : "s")",
+                 "last sync \(s.lastSync.map(DiagnosticsReport.stamp) ?? "never")"]
+    if !s.skipped.isEmpty { parts.append("\(s.skipped.count) skipped file\(s.skipped.count == 1 ? "" : "s"): \(s.skipped.map(\.reason).joined(separator: "; "))") }
+    if !s.conflictCopies.isEmpty { parts.append("\(s.conflictCopies.count) conflict cop\(s.conflictCopies.count == 1 ? "y" : "ies") merged") }
+    if let e = s.lastError { parts.append("error: \(e)") }
+    return parts.joined(separator: ", ")
 }
 
 /// e.g. "Bars (Grok, Grok Bot)" or "off" (for the Diagnostics settings summary).

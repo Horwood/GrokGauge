@@ -3,17 +3,18 @@ import Foundation
 /// Watches the shared settings folder and file. Sync clients (Google Drive, Insync, Dropbox, iCloud)
 /// often replace a file rather than write it in place, so this watches the folder (renames/creates),
 /// the file itself (in-place writes), and also polls as a fallback.
+/// With `file` nil it watches the whole folder: any `.json` added, removed or changed (history sync).
 final class FolderWatcher {
     private let directory: URL
-    private let file: URL
+    private let file: URL?
     private let onChange: () -> Void
     private var dirSource: DispatchSourceFileSystemObject?
     private var fileSource: DispatchSourceFileSystemObject?
     private var pollTimer: DispatchSourceTimer?
-    private var lastSeen: (Date?, Int?) = (nil, nil)
+    private var lastSeen: String = ""
     private var pending: DispatchWorkItem?
 
-    init(directory: URL, file: URL, pollInterval: TimeInterval = 30, onChange: @escaping () -> Void) {
+    init(directory: URL, file: URL?, pollInterval: TimeInterval = 30, onChange: @escaping () -> Void) {
         self.directory = directory
         self.file = file
         self.onChange = onChange
@@ -40,7 +41,7 @@ final class FolderWatcher {
 
     private func arm() {
         if dirSource == nil { dirSource = source(for: directory) }
-        if fileSource == nil { fileSource = source(for: file) }
+        if fileSource == nil, let file { fileSource = source(for: file) }
     }
 
     private func source(for url: URL) -> DispatchSourceFileSystemObject? {
@@ -64,15 +65,22 @@ final class FolderWatcher {
         return src
     }
 
-    private func stamp() -> (Date?, Int?) {
-        let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-        return (values?.contentModificationDate, values?.fileSize)
+    /// Modification date + size of the file, or of every JSON file in the folder in folder mode.
+    private func stamp() -> String {
+        func one(_ url: URL) -> String {
+            let v = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            return "\(url.lastPathComponent):\(v?.contentModificationDate?.timeIntervalSince1970 ?? 0):\(v?.fileSize ?? -1)"
+        }
+        if let file { return one(file) }
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        return names.filter { $0.hasSuffix(".json") }.sorted()
+            .map { one(directory.appendingPathComponent($0)) }.joined(separator: "|")
     }
 
     private func poll() {
         arm()
         let now = stamp()
-        if now.0 != lastSeen.0 || now.1 != lastSeen.1 { changed() }
+        if now != lastSeen { changed() }
     }
 
     /// Coalesces bursts of events (a sync client may touch the file several times).

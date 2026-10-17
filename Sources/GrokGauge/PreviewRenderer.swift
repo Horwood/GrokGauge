@@ -116,10 +116,23 @@ enum PreviewRenderer {
                                     lastChecked: Date().addingTimeInterval(-3 * 3600))
             : UpdateMonitor.preview(available: nil, lastChecked: Date())
         let expiry = demo ? Date().addingTimeInterval(5.5 * 3600) : store.grokTokenExpiry()
+        // History sync as it looks with three Macs (one Insync conflict copy merged, one partial file skipped).
+        let prefsHistory: HistoryStore
+        if demo {
+            let folder = URL(fileURLWithPath: NSHomeDirectory() + "/Google-Drive/Computers/Mac/MacSyncing", isDirectory: true)
+            prefsHistory = HistoryStore.preview(historyStore.history, sync: HistoryStore.SyncStatus(
+                enabled: true, folder: folder, origin: .detected,
+                ownFile: HistorySync.fileURL(inSyncFolder: folder, machineID: "3f9c2a7d41b08e55"),
+                machineCount: 3, machineNames: ["Air-M4", "MacBook Pro M2 Max", "Studio M2"],
+                lastSync: Date().addingTimeInterval(-75), skipped: [HistorySyncSkip(fileName: "7be1d0c94a2f6e13.json", reason: "unreadable or partial JSON")],
+                conflictCopies: ["3f9c2a7d41b08e55 (1).json"], lastError: nil))
+        } else {
+            prefsHistory = HistoryStore.preview(historyStore.history)
+        }
         for tab in PrefsTab.allCases {
             let view = PreferencesView(settingsStore: prefsSettings, store: store, updates: updates,
                                        loginItem: LaunchAtLogin(), hotKeys: HotKeyCenter.shared, whatsNew: whatsNew,
-                                       tab: tab, scrollable: false, tokenExpiry: { expiry })
+                                       history: prefsHistory, tab: tab, scrollable: false, tokenExpiry: { expiry })
             ok = renderView(view, scheme: .dark, background: true,
                             to: dir.appendingPathComponent("prefs-\(tab.rawValue)\(suffix).png")) && ok
             if tab == .about || tab == .whatsNew {
