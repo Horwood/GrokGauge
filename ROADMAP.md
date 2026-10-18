@@ -35,5 +35,4 @@ Suggestions and bug reports are welcome in [GitHub Issues](https://github.com/st
 
 ---
 
-GrokGauge is an unofficial community project. It is not made, endorsed, or supported by xAI, or by
-Anysphere, the maker of Cursor and the Grok Bot app. "Grok" and "SuperGrok" are trademarks of xAI.
+GrokGauge is an unofficial community project. It is not made, endorsed, or supported by xAI or Cursor. "Grok" and "SuperGrok" are trademarks of xAI.
