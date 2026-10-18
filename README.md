@@ -455,6 +455,7 @@ Casks/grokgauge.rb       Copy of the cask in stevencombs/homebrew-tap
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute and [CHANGELOG.md](CHANGELOG.md) for what changed.
+What's next: [ROADMAP.md](ROADMAP.md).
 
 ## Credits and contact
 
