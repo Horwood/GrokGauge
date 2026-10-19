@@ -31,6 +31,10 @@ GrokGauge tracks two weekly limits side by side:
   API. It resets **every 7 days** on your account's own schedule.
 - **Grok Bot.** If you use the [Grok Bot](https://cursor.com/bot) desktop app, its **weekly usage**
   (the number on Grok Bot's *Settings › Usage & Billing* screen) has its own limit and its own reset time.
+  When Grok Bot's reading instead describes your shared SuperGrok pool (same reset minute, about the same
+  percent as Grok), GrokGauge notices and the Grok Bot ring shows **Grok Bot's share of that pool**, labeled
+  "share of Grok pool", so you don't see the same number twice. If the two separate again, the ring goes back
+  to Grok Bot's own allowance on its own.
 
 Features:
 
@@ -39,6 +43,9 @@ Features:
   **higher** of the two numbers, **both** (`G 42% · B 86%`), just one source, or only the logo tinted
   by status. Optionally add the days to reset (`10% · 5d`) or hide the logo.
 - **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
+  An optional third **Cursor ring** (off by default) shows the "Cursor" share of your Grok pool when xAI's
+  usage reply lists it; it needs no Cursor sign-in. With three rings side by side, keep the rings their usual
+  size (the dropdown gets a little wider) or shrink them to fit the usual width.
 - **History & pace.** A 7-day graph for each source: one bar per day with the highest % reached that day
   (or a line or area graph, your pick), plus a projection: "On track (≈40% at reset)"
   or "At this pace you'll hit 100% by Fri 3 PM". With a sync folder, the graphs combine readings
@@ -104,6 +111,11 @@ Features:
   <img src="docs/popover-status-outage-example.png" width="300" alt="The service status row during an incident: an orange dot reading 'xAI: Degraded: Imagine' and a red dot reading 'Cursor: Outage: Cloud Agents'">
 </p>
 <p align="center"><sub>The service status row during an incident (example data; normally both dots are green).</sub></p>
+
+<p align="center">
+  <img src="docs/popover-three-rings-keepSize-dark-demo.png" width="360" alt="Three rings side by side: Grok 42%, Grok Bot 86% and the optional Cursor ring at 3%, captioned share of Grok pool">
+</p>
+<p align="center"><sub>The optional Cursor ring (sample data), with "Keep ring size" on.</sub></p>
 
 ## Requirements
 
@@ -193,16 +205,18 @@ Everything applies immediately.
 | <img src="docs/prefs-whatsNew-demo.png" width="400" alt="What's New tab"> | <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> |
 | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> | |
 
-- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, service status, history & pace,
+- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, Cursor ring, service status, history & pace,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
   rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
-  choose whether the Grok and Grok Bot graphs appear (turning both off hides the section) and pick the
+  choose whether the Grok, Grok Bot and Cursor graphs appear (the Cursor graph only while the Cursor ring is
+  on; turning them all off hides the section) and pick the
   **Graph style**: Bars (one bar per day, the default), Line, or Area. Under **Grok by product**, check
   which products appear (Chat, Imagine, Voice, Build, API, plus any product xAI adds later, which shows up
   at the end), drag them into your order, and pick a **Sort**: My order, Highest usage first (ties keep
   your order) or Alphabetical; unchecking them all hides the section. Under **Service status**, choose
   the **xAI** and **Cursor** dots (both on by default; turning both off hides the row) and the optional
-  outage notification. Pick the ring style, and
+  outage notification. Under **Rings**, pick the ring style, switch the Cursor ring on, and choose
+  **With three rings**: keep ring size or shrink to fit. Then
   choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
 - **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
   green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.
@@ -253,6 +267,11 @@ iCloud Drive under *Settings › Sync › Usage history*, or switch **Sync histo
   account-wide, so matching readings are combined by taking the highest, never added.
 - Conflict copies from Insync or Drive are merged; damaged files are skipped and shown in
   *Settings › Diagnostics*, along with the folder, the number of Macs and the last sync.
+- If a Mac's settings sync through a different folder than the `MacSyncing` folder found automatically (for
+  example `MacSyncing/xAI`), history is written to and read from **both**, so that Mac still shows up on the
+  others. A folder you choose for history is used on its own.
+- *Settings › Diagnostics › History sync* shows every folder in use, when this Mac's file was last written,
+  and any write error (no permission, folder missing, disk full), which stays listed until a write succeeds.
 - With no folder, history stays on the Mac as before.
 
 ## Privacy

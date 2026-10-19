@@ -5,6 +5,49 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-19
+
+### Fixed
+- **The gear button opens its menu on the first click.** In 0.9.2 the first click on the gear only made the
+  dropdown the active window (it becomes key a moment after it opens), so Settings… / Quit GrokGauge needed a
+  second click. The gear is now an AppKit button that accepts that first click and opens the menu itself.
+  Settings… (⌘,) and Quit GrokGauge (⌘Q) work as before.
+- **Usage history now reaches every Mac when settings sync through a subfolder.** History followed the
+  settings-sync folder first, so a Mac whose settings sync through, say, `MacSyncing/xAI` wrote its history
+  file into `MacSyncing/xAI/GrokGauge/history/` while the other Macs read `MacSyncing/GrokGauge/history/`,
+  and neither side saw the other. When the settings-sync folder and the auto-found `MacSyncing` folder differ,
+  GrokGauge now writes this Mac's file to both and reads both. A folder chosen for history is still used alone.
+- History write failures no longer disappear: the last failed write (and a failed save of the local
+  `history.json`) stays in Settings › Diagnostics › **History sync**, with the time, until a write succeeds.
+  Diagnostics also lists every history folder in use and when this Mac's file was last written.
+
+### Changed
+- **Grok Bot on the shared pool.** When Grok Bot's own usage reading describes your shared SuperGrok weekly
+  pool (its reset is within 2 minutes of the pool's and the percents are within 2 points), the Grok Bot ring
+  shows **Grok Bot's share of that pool** (the GrokBot product in the usage reply), captioned
+  "share of Grok pool", instead of repeating the Grok ring's number. Its pace, "On track" line, history and
+  alerts use that share too, so one pool never alerts twice. The tooltip shows Grok Bot's own reading. Once
+  a week is known to be shared it stays shared while the reset times match, so readings taken a few minutes
+  apart don't flip the ring. When the two separate again, the ring goes back to Grok Bot's own allowance.
+- **Clearer labels.** The Grok ring's caption is now "SuperGrok weekly pool" (its tooltip lists every
+  product's share), the by-product card is "Grok pool by product", and its "Bot" row is now **Grok Bot**
+  (your checkbox and position for it carry over). The menu bar tooltip and VoiceOver say when the Grok Bot
+  number is a share of the pool.
+
+### Added
+- **Optional Cursor ring.** A third ring for the "Cursor" share of your Grok pool, from the same usage reply
+  (no Cursor sign-in). Off by default: switch it on in Settings › Layout › **Rings** (or check
+  "Cursor ring" in the section list). **With three rings**: keep ring size (the dropdown widens to 392 pt) or
+  shrink the rings to fit the usual 320 pt. When the reply doesn't list Cursor, the ring says
+  "Not in your Grok pool". The combined ring style includes it.
+- A **Cursor** graph in "Last 7 days & pace" while the Cursor ring is on (Settings › Layout › History graphs).
+- `--print-usage` and `--json` now report the rings as the dropdown shows them, including whether Grok Bot
+  was detected on the shared pool, its share, and Cursor's share.
+- History files keep working both ways: 0.9.2 reads 0.9.3 files (it ignores the new Cursor list and share
+  tags), and 0.9.3 reads 0.9.2 files. When a Mac still on 0.9.2 shares a folder with a 0.9.3 Mac, its
+  whole-pool Grok Bot readings after the switch are left out of the Grok Bot graph so one graph never mixes
+  two measures; the switch itself isn't drawn as a reset.
+
 ## [0.9.2] - 2026-10-17
 
 ### Added
@@ -164,6 +207,7 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
+[0.9.3]: https://github.com/stevencombs/GrokGauge/compare/v0.9.2...v0.9.3
 [0.9.0]: https://github.com/stevencombs/GrokGauge/compare/v0.3.0...v0.9.0
 [0.3.0]: https://github.com/stevencombs/GrokGauge/releases/tag/v0.3.0
 [0.2.0]: https://github.com/stevencombs/GrokGauge/commit/e64bec4
