@@ -16,6 +16,9 @@ promised date.
 
 ## Recently shipped
 
+**0.9.4:** the gear menu opens on the first click and stays open, and a click outside the dropdown closes it
+again (GrokGauge now becomes the active app as the dropdown opens).
+
 **0.9.3:** an optional Cursor ring (its share of the Grok pool) with a keep-size or fit-to-width setting, the
 Grok Bot ring showing Grok Bot's share when it's on the shared Grok pool, clearer pool labels, a one-click
 gear menu, and history sync that reaches every Mac even when settings sync through a subfolder.

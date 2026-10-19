@@ -5,6 +5,8 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-19
+
 ### Fixed
 - **The gear's first click really opens its menu now, and a click outside closes the dropdown.** 0.9.3's
   gear menu flashed open and closed on the first click, and until then a click elsewhere didn't close the
@@ -217,6 +219,7 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
+[0.9.4]: https://github.com/stevencombs/GrokGauge/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/stevencombs/GrokGauge/compare/v0.9.2...v0.9.3
 [0.9.0]: https://github.com/stevencombs/GrokGauge/compare/v0.3.0...v0.9.0
 [0.3.0]: https://github.com/stevencombs/GrokGauge/releases/tag/v0.3.0
