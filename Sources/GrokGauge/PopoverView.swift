@@ -1282,9 +1282,10 @@ private struct UpdateBanner: View {
 
 /// The header's gear: one click opens a small menu with Settings… and Quit GrokGauge.
 ///
-/// 0.9.2 used a SwiftUI `Menu`. Inside the status item's popover, the first click on it only made the popover's
-/// window key (the app activates asynchronously after the popover opens), so the menu needed a second click.
-/// This AppKit button accepts the first mouse-down and pops the menu up itself.
+/// The menu is popped up by AppKit (`NSMenu.popUp`), not a SwiftUI `Menu`. If GrokGauge isn't yet the active
+/// app (or the dropdown isn't key) when the gear is clicked, the button activates first and pops the menu only
+/// once activation has landed. A menu opened before that is dismissed by the activation itself, which is why
+/// 0.9.3's first click showed the menu for a moment and closed it.
 struct GearMenuButton: NSViewRepresentable {
     var openSettings: () -> Void
 
@@ -1343,14 +1344,58 @@ struct GearMenuButton: NSViewRepresentable {
 
 final class FirstClickMenuButton: NSButton {
     var menuProvider: (() -> NSMenu?)?
+    private var pendingActivation: NSObjectProtocol?
+    private var pendingFallback: DispatchWorkItem?
 
-    /// The fix: a click that also makes the popover key still counts as a click on the gear.
+    /// A click that also makes the dropdown key still counts as a click on the gear.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) { showMenu(self) }
 
     @objc func showMenu(_ sender: Any?) {
-        guard let menu = menuProvider?() else { return }
+        if AppActivation.isReady(window) {
+            popUpNow()
+            return
+        }
+        // Not active yet: activate, then pop the menu once the app has become active (or, as a fallback,
+        // shortly after, so the gear never does nothing).
+        cancelPending()
+        AppActivation.activateNow()
+        window?.makeKeyAndOrderFront(nil)
+        if NSApp.isActive {
+            // Activation took effect synchronously; let the key-window change settle for one runloop turn.
+            DispatchQueue.main.async { [weak self] in self?.popUpNow() }
+            return
+        }
+        pendingActivation = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.cancelPending()
+                self.window?.makeKey()
+                DispatchQueue.main.async { [weak self] in self?.popUpNow() }
+            }
+        }
+        let fallback = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.pendingActivation != nil else { return }
+                self.cancelPending()
+                self.popUpNow()
+            }
+        }
+        pendingFallback = fallback
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: fallback)
+    }
+
+    private func cancelPending() {
+        if let o = pendingActivation { NotificationCenter.default.removeObserver(o) }
+        pendingActivation = nil
+        pendingFallback?.cancel()
+        pendingFallback = nil
+    }
+
+    private func popUpNow() {
+        guard window?.isVisible == true, let menu = menuProvider?() else { return }
         highlight(true)
         defer { highlight(false) }
         let y = isFlipped ? bounds.maxY + 4 : bounds.minY - 4

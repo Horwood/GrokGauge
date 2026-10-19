@@ -5,6 +5,16 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Fixed
+- **The gear's first click really opens its menu now, and a click outside closes the dropdown.** 0.9.3's
+  gear menu flashed open and closed on the first click, and until then a click elsewhere didn't close the
+  dropdown. The cause was activation: GrokGauge is a menu bar app, and opening the dropdown only *requested*
+  activation after it appeared (`NSApp.activate()`), so the app wasn't active and the dropdown wasn't key. The
+  first click inside then activated the app, and that activation dismissed the menu. The dropdown now
+  activates GrokGauge before it appears and becomes key straight away; the gear waits for activation to land
+  before it opens its menu; and a click in another app or on the desktop always closes the dropdown, even if
+  activation is refused.
+
 ## [0.9.3] - 2026-10-19
 
 ### Fixed

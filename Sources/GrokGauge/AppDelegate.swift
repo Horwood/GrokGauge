@@ -4,7 +4,7 @@ import GrokGaugeCore
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private let notifier = UsageNotifier()
@@ -25,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var preferences: PreferencesWindowController?
     private var cancellables = Set<AnyCancellable>()
     private var lastApplied: GaugeSettings?
+    /// Closes the dropdown on a click in another app or on the desktop. A backstop for `.transient`, which
+    /// only closes on a click elsewhere once GrokGauge is the active app.
+    private var outsideClickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -45,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = host
         popover.behavior = .transient
         popover.animates = true
+        popover.delegate = self
 
         preferences = PreferencesWindowController { [unowned self] in
             PreferencesView(settingsStore: settingsStore, store: store, updates: updates, loginItem: loginItem,
@@ -234,9 +238,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             history.refreshFromFolder()
             if settingsStore.settings.showsServiceStatus { serviceStatus.refreshIfStale() }
             updatePopoverSizing()
+            // Become the active app *before* the dropdown appears. GrokGauge is a menu bar (LSUIElement) app, so
+            // a status item click doesn't activate it. 0.9.3 and earlier called the cooperative `NSApp.activate()`
+            // after `show`, which only *requests* activation and lands later, or not at all. The dropdown then
+            // wasn't key, a click outside didn't close it, and the late activation from the first click inside
+            // dismissed the gear menu as soon as it opened.
+            AppActivation.activateNow()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApp.activate()
-            popover.contentViewController?.view.window?.makeKey()
+            if let window = popover.contentViewController?.view.window {
+                window.makeKeyAndOrderFront(nil)
+            }
+            installOutsideClickMonitor()
         }
+    }
+
+    // MARK: Closing on a click outside
+
+    private func installOutsideClickMonitor() {
+        removeOutsideClickMonitor()
+        // Global monitors see clicks delivered to other apps (and the desktop), never our own windows or the
+        // status item, so the status item's own toggle and clicks inside the dropdown are unaffected.
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.popover.isShown else { return }
+                self.popover.performClose(nil)
+            }
+        }
+    }
+
+    private func removeOutsideClickMonitor() {
+        if let m = outsideClickMonitor { NSEvent.removeMonitor(m) }
+        outsideClickMonitor = nil
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        removeOutsideClickMonitor()
+    }
+}
+
+/// Synchronous activation for a menu bar app.
+@MainActor
+enum AppActivation {
+    /// Makes GrokGauge the active app right away. `activate(ignoringOtherApps:)` is deprecated on macOS 14 in
+    /// favour of cooperative activation, but for a status item app responding to the user's own click it is
+    /// still the call that takes effect immediately; the cooperative call is made too.
+    static func activateNow() {
+        if NSApp.isActive { return }
+        legacyActivate()
+        NSApp.activate()
+    }
+
+    @available(macOS, deprecated: 14.0)
+    private static func legacyActivate() { NSApp.activate(ignoringOtherApps: true) }
+
+    /// True when the app is active and `window` is key, so a menu popped up now won't be dismissed by an
+    /// activation that is still on its way.
+    static func isReady(_ window: NSWindow?) -> Bool {
+        NSApp.isActive && (window?.isKeyWindow ?? false)
     }
 }
