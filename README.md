@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://stevencombs.github.io/GrokGauge/"><img src="https://img.shields.io/badge/Website-GrokGauge-2FBF57?logo=apple&amp;logoColor=white" alt="Website"></a>
   <a href="https://paypal.me/stevencombs"><img src="https://img.shields.io/badge/Tip%20via-PayPal-00457C?logo=paypal&amp;logoColor=white" alt="Tip via PayPal"></a>
   <a href="https://www.youtube.com/@retroCombs-Tech"><img src="https://img.shields.io/badge/YouTube-%40retroCombs--Tech-FF0000?logo=youtube&amp;logoColor=white" alt="YouTube @retroCombs-Tech"></a>
 </p>

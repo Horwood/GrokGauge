@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>GrokGauge · Know your Grok limits at a glance</title>
+<meta name="description" content="GrokGauge is a free, open-source macOS menu bar app that shows your weekly SuperGrok and Grok Bot usage as colored rings.">
+<meta property="og:title" content="GrokGauge · Know your Grok limits at a glance">
+<meta property="og:description" content="A free, open-source macOS menu bar app for your weekly SuperGrok and Grok Bot usage.">
+<link rel="canonical" href="https://stevencombs.github.io/GrokGauge/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://stevencombs.github.io/GrokGauge/">
+<meta property="og:image" content="https://stevencombs.github.io/GrokGauge/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GrokGauge: Know your Grok limits at a glance. A free, open-source macOS menu bar app.">
+<meta name="twitter:image" content="https://stevencombs.github.io/GrokGauge/assets/og-image.png">
+<meta name="twitter:site" content="@StevenCombs">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icon-256.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top"><img src="assets/icon-256.png" alt="" width="32" height="32"><span>GrokGauge</span></a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#rings">Rings</a>
+      <a href="#how">How it works</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+      <a href="#support">Support</a>
+    </nav>
+    <a class="btn btn-ghost btn-sm" href="https://github.com/stevencombs/GrokGauge">
+      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="dot"></span>v0.9.4 · Free &amp; open source · macOS 14+</p>
+      <h1>Know your Grok limits <span class="grad">at a glance.</span></h1>
+      <p class="lede">GrokGauge lives in your Mac's menu bar and shows your weekly SuperGrok usage as rings that turn green, orange and red, so the weekly limit never sneaks up on you.</p>
+
+      <div class="cmd" role="group" aria-label="Homebrew install command">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code id="brew-cmd">brew install --cask stevencombs/tap/grokgauge</code>
+        <button class="copy" type="button" data-copy="brew install --cask stevencombs/tap/grokgauge" aria-label="Copy install command">Copy</button>
+      </div>
+
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/stevencombs/GrokGauge/releases/latest">
+          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 1.75a.75.75 0 011.5 0v7.19l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 111.06-1.06l2.22 2.22V1.75zM2 13.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"/></svg>
+          Download for Mac
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/stevencombs/GrokGauge">View on GitHub</a>
+      </div>
+      <p class="fine">Native Swift · Apple silicon &amp; Intel · MIT licensed · Unofficial, not affiliated with xAI or Cursor</p>
+    </div>
+
+    <figure class="hero-shot">
+      <picture>
+        <source srcset="assets/popover-light.png" media="(prefers-color-scheme: light)">
+        <img src="assets/popover-dark.png" width="320" height="1116" alt="The GrokGauge dropdown: Grok ring at 39% of the SuperGrok weekly pool and Grok Bot at 27% share of the pool, service status, a 7-day history graph with pace, reset countdown and Grok pool by product">
+      </picture>
+      <figcaption>Real screenshot, live data (0.9.4)</figcaption>
+    </figure>
+  </div>
+
+  <div class="wrap menubar-strip">
+    <figure class="mb-fig"><img src="assets/menubar.png" width="85" height="30" alt="GrokGauge in the menu bar: the gauge glyph and 39% in green"><figcaption>Menu bar, live (0.9.4)</figcaption></figure>
+    <p>Lives in your menu bar. Pick your style: the higher percent, both numbers, days to reset, or just a tinted logo.</p>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="section">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker">Features</p>
+      <h2>Everything about your week, one click away.</h2>
+      <p>Click the gauge (or press <kbd>⌃⌥G</kbd>) and the whole picture drops down.</p>
+    </header>
+
+    <div class="grid feat-shots">
+      <article class="card shot-card f-hist">
+        <div class="shot"><img src="assets/crop-history.png" alt="7-day history bars for Grok and Grok Bot, with 'On track (≈59% at reset)'"></div>
+        <h3>Pace &amp; 7-day history</h3>
+        <p>A bar, line or area graph for each ring, plus a projection: “On track (≈59% at reset)” or “At this pace you'll hit 100% by Fri 3 PM.”</p>
+      </article>
+      <article class="card shot-card f-prod">
+        <div class="shot"><img src="assets/crop-products.png" alt="Grok pool by product: Chat, Imagine, Voice, Build, API, Grok Bot and Cursor"></div>
+        <h3>Grok pool by product</h3>
+        <p>See what's eating your pool: Chat, Imagine, Voice, Build, API, Grok Bot and Cursor. Pick which ones show and how they're sorted.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot"><img src="assets/crop-resets.png" alt="Resets in 2 days, Thu Oct 22 at 3:55 AM"></div>
+        <h3>Reset countdown</h3>
+        <p>Days to reset, a live countdown and the exact reset time in your time zone.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot"><img src="assets/crop-status.png" alt="Green dots: xAI all systems normal, Cursor all systems normal"></div>
+        <h3>xAI &amp; Cursor status</h3>
+        <p>Two dots tell you if a slowdown is on their end. Click one to open the status page.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot"><img src="assets/crop-whatsnew.png" alt="What's new from xAI: app updates and a Grok CLI update with a copyable 'grok update' command"></div>
+        <h3>What's new from xAI</h3>
+        <p>New Grok app releases, xAI news and Grok CLI updates, with the <code>grok update</code> command ready to copy.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot"><img src="assets/crop-credits.png" alt="Extra Usage Credits balance"></div>
+        <h3>Extra Usage Credits</h3>
+        <p>Your prepaid Grok credit balance, right next to your usage.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot"><img src="assets/crop-buttons.png" alt="Quick-open buttons for Grok, Grok Bot and X"></div>
+        <h3>Quick-open buttons</h3>
+        <p>Jump straight to Grok, Grok Bot or X from the dropdown.</p>
+      </article>
+      <article class="card shot-card">
+        <div class="shot shot-split"><img src="assets/rings-light-dark.png" alt="The Grok and Grok Bot rings in light mode and in dark mode (0.9.4, live data)"></div>
+        <h3>Light &amp; dark</h3>
+        <p>Follows your Mac's appearance, with a colorblind-friendly color preset too.</p>
+      </article>
+    </div>
+
+    <div class="grid feat-mini">
+      <div class="mini"><span class="mi">⇄</span><div><h4>History synced across Macs</h4><p>Point GrokGauge at a folder your Macs already sync and every Mac's graph includes the others' readings.</p></div></div>
+      <div class="mini"><span class="mi">🔔</span><div><h4>Heads-up alerts</h4><p>A notification when a ring reaches your warning or critical level, once per week each.</p></div></div>
+      <div class="mini"><span class="mi">⌨</span><div><h4>Global shortcut</h4><p>Press <kbd>⌃⌥G</kbd> from anywhere to open the dropdown.</p></div></div>
+      <div class="mini"><span class="mi">⏻</span><div><h4>Launch at login</h4><p>Set it once and it's there every time your Mac starts.</p></div></div>
+      <div class="mini"><span class="mi">›_</span><div><h4>Guided Grok CLI setup</h4><p>No Grok CLI yet? GrokGauge walks you through installing it and running <code>grok login</code>.</p></div></div>
+      <div class="mini"><span class="mi">⚙</span><div><h4>Make it yours</h4><p>Reorder or hide sections, pick ring and graph styles, and set your own color levels.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- RINGS -->
+<section id="rings" class="section alt">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker">The rings</p>
+      <h2>Up to three rings. One weekly pool.</h2>
+      <p>Each ring turns <span class="c-g">green</span>, <span class="c-o">orange</span> and <span class="c-r">red</span> at levels you choose.</p>
+    </header>
+
+    <div class="ring-explain">
+      <div class="ring-key"><span class="k k-g"></span><div><h4>Grok</h4><p>Your whole SuperGrok weekly pool: Chat, Imagine, Voice, Build, the API and more.</p></div></div>
+      <div class="ring-key"><span class="k k-o"></span><div><h4>Grok Bot</h4><p>Grok Bot's share of that pool when the two share one, or its own weekly allowance when it has one.</p></div></div>
+      <div class="ring-key"><span class="k k-b"></span><div><h4>Cursor <em>optional</em></h4><p>Cursor's share of the pool, when xAI's usage data lists it. No Cursor sign-in needed.</p></div></div>
+    </div>
+
+    <div class="grid ring-shots">
+      <figure class="card fig">
+        <div class="shot"><img src="assets/rings-two.png" alt="Two rings: Grok 39% and Grok Bot 27% share of Grok pool"></div>
+        <figcaption><strong>Two rings</strong> · the default (0.9.4)</figcaption>
+      </figure>
+      <figure class="card fig">
+        <div class="shot"><img src="assets/rings-three-fit.png" alt="Three rings fit to the standard width: Grok 39%, Grok Bot 27%, Cursor 5%"></div>
+        <figcaption><strong>Three rings, fit to width</strong> · same window, smaller rings (0.9.4)</figcaption>
+      </figure>
+      <figure class="card fig">
+        <div class="shot"><img src="assets/rings-three-keep.png" alt="Three rings at full size in a wider window: Grok 39%, Grok Bot 27%, Cursor 5%"></div>
+        <figcaption><strong>Three rings, keep size</strong> · wider window (0.9.4)</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="section">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker">How it works</p>
+      <h2>Your login stays on your Mac.</h2>
+      <p>GrokGauge uses the Grok CLI login already on your Mac. No new accounts, no passwords, no middleman.</p>
+    </header>
+
+    <ol class="steps">
+      <li><span class="n">1</span><h3>Install</h3><p>One Homebrew command, or drag the app from GitHub Releases into Applications.</p></li>
+      <li><span class="n">2</span><h3>Sign in to the Grok CLI</h3><p>Run <code>grok login</code> once. GrokGauge reads that login from <code>~/.grok/auth.json</code> and keeps it renewed, just like the CLI does.</p></li>
+      <li><span class="n">3</span><h3>Glance</h3><p>Your usage appears in the menu bar and refreshes on its own every 5 to 60 minutes.</p></li>
+    </ol>
+
+    <div class="privacy card">
+      <h3>Privacy, in plain words</h3>
+      <ul class="checks">
+        <li>Your Grok tokens never leave your Mac except to go to xAI's own servers over HTTPS, to fetch your usage and to renew your login. GrokGauge refuses to send them anywhere else.</li>
+        <li>The Grok Bot number comes from a file the Grok Bot app saves on your Mac. GrokGauge makes no network requests for Grok Bot.</li>
+        <li>Logins are never synced between Macs. Only settings and usage history (timestamps and percents) sync, and only to a folder you choose.</li>
+        <li>No analytics, no telemetry, no account. Open source, so you can read every line.</li>
+      </ul>
+      <a class="more" href="https://github.com/stevencombs/GrokGauge#privacy">Read the full privacy details →</a>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="install" class="section alt">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker">Install</p>
+      <h2>Up and running in a minute.</h2>
+    </header>
+
+    <div class="grid install-grid">
+      <div class="card">
+        <span class="tag">Recommended</span>
+        <h3>Homebrew</h3>
+        <div class="cmd cmd-sm">
+          <code>brew install --cask stevencombs/tap/grokgauge</code>
+          <button class="copy" type="button" data-copy="brew install --cask stevencombs/tap/grokgauge" aria-label="Copy install command">Copy</button>
+        </div>
+        <p>Update later with <code>brew upgrade --cask grokgauge</code>.</p>
+      </div>
+      <div class="card">
+        <span class="tag tag-muted">Direct download</span>
+        <h3>GitHub Releases</h3>
+        <p>Download the zip from the latest release, unzip it and drag <strong>GrokGauge.app</strong> into Applications. Each release lists the zip's SHA-256.</p>
+        <a class="btn btn-ghost btn-sm" href="https://github.com/stevencombs/GrokGauge/releases/latest">Latest release →</a>
+      </div>
+      <div class="card">
+        <span class="tag tag-muted">Requirements</span>
+        <h3>What you need</h3>
+        <ul class="reqs">
+          <li>macOS 14 Sonoma or later (Apple silicon or Intel)</li>
+          <li>A SuperGrok subscription</li>
+          <li>The Grok CLI, signed in once (needed for the Grok ring)</li>
+          <li><em>Optional:</em> the Grok Bot app, for the Grok Bot ring</li>
+          <li><em>Optional:</em> Homebrew, for the one-line install</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cli-note">
+      <p><strong>No Grok CLI yet?</strong> Install it with xAI's official installer, then sign in:</p>
+      <div class="cmd cmd-sm">
+        <code>curl -fsSL https://x.ai/cli/install.sh | bash &amp;&amp; grok login</code>
+        <button class="copy" type="button" data-copy="curl -fsSL https://x.ai/cli/install.sh | bash" aria-label="Copy Grok CLI install command">Copy</button>
+      </div>
+      <p class="fine">GrokGauge offers the same steps in its dropdown. It never installs anything or signs in on its own.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="section">
+  <div class="wrap narrow">
+    <header class="sec-head">
+      <p class="kicker">FAQ</p>
+      <h2>Questions, answered.</h2>
+    </header>
+
+    <details open>
+      <summary>Is it official?</summary>
+      <p>No. GrokGauge is an unofficial community project by Steven “retroCombs” Combs. It is not made, endorsed or supported by xAI or Cursor. It reads usage from unofficial endpoints that can change without notice, which could break it until it's updated.</p>
+    </details>
+    <details open>
+      <summary>Is it safe?</summary>
+      <p>The code is open source under the MIT license, so anyone can read it. Your Grok tokens go only to xAI's own servers, over HTTPS. There's no analytics or telemetry, and logins never sync between Macs. As with any unofficial tool, use it at your own risk.</p>
+    </details>
+    <details open>
+      <summary>Why does macOS warn me before 1.0?</summary>
+      <p>Releases before 1.0 aren't notarized by Apple yet, so a manually downloaded copy gets a Gatekeeper warning the first time you open it. Open <strong>System Settings › Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>. The Homebrew install clears that flag for GrokGauge only. Version 1.0 is planned to be signed and notarized by Apple, so the warning goes away.</p>
+    </details>
+    <details>
+      <summary>What does it cost?</summary>
+      <p>Nothing. GrokGauge is free. If it saves you from a surprise at the weekly limit, a tip is always appreciated.</p>
+    </details>
+    <details>
+      <summary>Do I need Grok Bot or Cursor?</summary>
+      <p>No. The Grok ring only needs the Grok CLI. The Grok Bot ring appears when the Grok Bot app is installed, and the Cursor ring is an optional setting.</p>
+    </details>
+    <details>
+      <summary>I use several Macs. Does it keep up?</summary>
+      <p>Yes. Choose a folder your Macs already sync (Google Drive, Dropbox, iCloud Drive and so on) and GrokGauge syncs your settings and usage history through it. Run <code>grok login</code> on each Mac, because logins are never synced.</p>
+    </details>
+  </div>
+</section>
+
+<!-- SUPPORT -->
+<section id="support" class="section alt">
+  <div class="wrap">
+    <div class="support card">
+      <img class="logo" src="assets/retrocombs-logo-160.png" width="96" height="96" alt="retroCombs logo">
+      <div class="support-copy">
+        <h2>Free, and built in the open.</h2>
+        <p>GrokGauge was made by Steven “retroCombs” Combs together with Grok Bot. If it saves you a surprise at the weekly limit, you can say thanks with a tip.</p>
+      </div>
+      <div class="support-cta">
+        <a class="btn btn-paypal" href="https://paypal.me/stevencombs">Tip via PayPal</a>
+        <a class="btn btn-ghost" href="https://github.com/stevencombs/GrokGauge">★ Star on GitHub</a>
+        <a class="link" href="https://github.com/stevencombs/GrokGauge/issues/new/choose">Report a bug or request a feature</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap foot-grid">
+    <div>
+      <a class="brand" href="#top"><img src="assets/icon-256.png" alt="" width="28" height="28"><span>GrokGauge</span></a>
+      <p class="fine">Made by Steven “retroCombs” Combs with Grok Bot.<br>Contact: <a href="mailto:retroCombs@icloud.com">retroCombs@icloud.com</a></p>
+    </div>
+    <div class="foot-links">
+      <h4>Project</h4>
+      <a href="https://github.com/stevencombs/GrokGauge">GitHub</a>
+      <a href="https://github.com/stevencombs/GrokGauge/releases">Releases</a>
+      <a href="https://github.com/stevencombs/GrokGauge/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/stevencombs/GrokGauge/blob/main/ROADMAP.md">Roadmap</a>
+    </div>
+    <div class="foot-links">
+      <h4>retroCombs</h4>
+      <a href="https://www.youtube.com/@retrocombs">YouTube @retroCombs</a>
+      <a href="https://www.youtube.com/@retrocombs-tech">YouTube @retroCombs-Tech</a>
+      <a href="https://x.com/StevenCombs">X @StevenCombs</a>
+      <a href="https://www.retrocombs.com">retrocombs.com</a>
+    </div>
+  </div>
+  <div class="wrap disclaimer">
+    <p><strong>Unofficial.</strong> GrokGauge is not made, endorsed or supported by xAI or Cursor. It reads usage from unofficial endpoints that can change at any time and could break. Use at your own risk.</p>
+    <p>Grok and SuperGrok are trademarks of xAI.</p>
+    <p>MIT License © 2026 Steven Combs (retroCombs)</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var t = b.getAttribute('data-copy');
+    var done = function () { b.textContent = 'Copied'; b.classList.add('ok'); setTimeout(function () { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(t).then(done, done); }
+    else { var a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); done(); }
+  });
+});
+</script>
+</body>
+</html>
