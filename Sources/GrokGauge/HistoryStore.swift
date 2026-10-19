@@ -25,6 +25,16 @@ final class HistoryStore: ObservableObject {
         var skipped: [HistorySyncSkip] = []
         var conflictCopies: [String] = []
         var lastError: String?
+        /// Every folder in use (the primary first). Two when the settings-sync folder and the auto-detected
+        /// MacSyncing folder differ: history is written to and read from both.
+        var folders: [URL] = []
+        /// When this Mac's file was last written successfully, and the last write failure (kept until a
+        /// write succeeds, so a read-only refresh can't hide it).
+        var lastWrite: Date?
+        var writeError: String?
+        var writeErrorAt: Date?
+        /// Saving `history.json` in Application Support failed.
+        var localSaveError: String?
 
         var isActive: Bool { enabled && folder != nil }
     }
@@ -46,6 +56,8 @@ final class HistoryStore: ObservableObject {
     private var pendingSave: DispatchWorkItem?
     private var pendingSync: DispatchWorkItem?
     private var watcher: FolderWatcher?
+    /// Extra folder watchers (when history uses more than one folder).
+    private var watchers: [FolderWatcher] = []
     private var generation = 0
 
     static let enabledKey = "history.syncEnabled"
@@ -77,9 +89,9 @@ final class HistoryStore: ObservableObject {
 
     // MARK: Recording
 
-    func record(_ source: HistorySource, percent: Double, at time: Date) {
+    func record(_ source: HistorySource, percent: Double, at time: Date, shared: Bool? = nil) {
         var h = local
-        h.record(source, percent: percent, at: time)
+        h.record(source, percent: percent, at: time, shared: shared)
         h.prune()
         guard h != local else { return }
         local = h
@@ -98,7 +110,13 @@ final class HistoryStore: ObservableObject {
         guard let url else { return }
         pendingSave?.cancel()
         let snapshot = local
-        let work = DispatchWorkItem { try? snapshot.save(to: url) }
+        let work = DispatchWorkItem { [weak self] in
+            let failure: String?
+            do { try snapshot.save(to: url); failure = nil } catch { failure = Self.describe(error) }
+            Task { @MainActor in
+                if self?.sync.localSaveError != failure { self?.sync.localSaveError = failure }
+            }
+        }
         pendingSave = work
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2, execute: work)
     }
@@ -167,11 +185,17 @@ final class HistoryStore: ObservableObject {
         watcher = nil
         pendingSync?.cancel()
         generation += 1
-        let resolved = HistorySyncFolder.resolve(chosen: chosenFolder, settingsSync: settingsFolder, detected: detectedFolder)
-        sync.folder = resolved?.url
-        sync.origin = resolved?.origin
-        sync.ownFile = resolved.map { HistorySync.fileURL(inSyncFolder: $0.url, machineID: machineID) }
+        let all = HistorySyncFolder.candidates(chosen: chosenFolder, settingsSync: settingsFolder, detected: detectedFolder)
+        sync.folder = all.first?.url
+        sync.origin = all.first?.origin
+        sync.folders = all.map(\.url)
+        sync.ownFile = all.first.map { HistorySync.fileURL(inSyncFolder: $0.url, machineID: machineID) }
+        sync.writeError = nil
+        sync.writeErrorAt = nil
+        watchers.forEach { $0.stop() }
+        watchers = []
         if !sync.isActive {
+            sync.folders = []
             others = []
             sync.machineCount = 0
             sync.machineNames = []
@@ -202,32 +226,62 @@ final class HistoryStore: ObservableObject {
     /// Writes this Mac's file (atomically), then reads and merges every file in the folder. File work runs
     /// off the main thread; bad files are skipped and listed in Diagnostics.
     func syncNow(write: Bool = true) {
-        guard sync.isActive, let folder = sync.folder, let ownFile = sync.ownFile else { return }
+        guard sync.isActive, !sync.folders.isEmpty else { return }
         generation += 1
         let gen = generation
+        let folders = sync.folders
         let payload = MachineHistoryFile(machineID: machineID, machineName: machineName, history: local)
-        let dir = HistorySync.directory(inSyncFolder: folder)
+        let id = machineID
         Task.detached(priority: .utility) {
-            let writeError: String? = {
-                guard write else { return nil }
-                do { try HistorySync.write(payload, to: ownFile); return nil } catch { return Self.describe(error) }
-            }()
-            let read = HistorySync.readAll(directory: dir)
+            var writeErrors: [String] = []
+            if write {
+                for folder in folders {
+                    do {
+                        try HistorySync.write(payload, to: HistorySync.fileURL(inSyncFolder: folder, machineID: id))
+                    } catch {
+                        writeErrors.append(folders.count > 1 ? "\(Self.describe(error)) (\(folder.lastPathComponent))" : Self.describe(error))
+                    }
+                }
+            }
+            var read = HistorySyncRead()
+            for folder in folders {
+                let r = HistorySync.readAll(directory: HistorySync.directory(inSyncFolder: folder))
+                read.files += r.files
+                read.skipped += r.skipped
+                read.conflictCopies += r.conflictCopies
+            }
+            let result = read
+            let writeError = writeErrors.isEmpty ? nil : writeErrors.joined(separator: "; ")
             await MainActor.run { [weak self] in
-                guard let self, gen == self.generation else { return }
-                self.apply(read, writeError: writeError)
+                guard let self, self.sync.folders == folders else { return }
+                // Write results always land (a newer read-only refresh must not hide a failed write).
+                if write { self.noteWrite(error: writeError) }
+                guard gen == self.generation else { return }
+                self.apply(result)
             }
         }
     }
 
-    private func apply(_ read: HistorySyncRead, writeError: String?) {
+    private func noteWrite(error: String?) {
+        if let error {
+            sync.writeError = error
+            sync.writeErrorAt = Date()
+        } else {
+            sync.writeError = nil
+            sync.writeErrorAt = nil
+            sync.lastWrite = Date()
+        }
+        sync.lastError = sync.writeError
+    }
+
+    private func apply(_ read: HistorySyncRead) {
         others = read.files.map(\.history)
         sync.machineCount = read.machineCount
         sync.machineNames = read.machineNames
         sync.skipped = read.skipped
         sync.conflictCopies = read.conflictCopies
-        sync.lastError = writeError
-        if writeError == nil { sync.lastSync = Date() }
+        sync.lastError = sync.writeError
+        if sync.writeError == nil { sync.lastSync = Date() }
         recompute()
         if watcher == nil, let folder = sync.folder {
             let dir = HistorySync.directory(inSyncFolder: folder)
@@ -236,6 +290,13 @@ final class HistoryStore: ObservableObject {
             }
             w.start()
             watcher = w
+            for extra in sync.folders.dropFirst() {
+                let w2 = FolderWatcher(directory: HistorySync.directory(inSyncFolder: extra), file: nil, pollInterval: 60) { [weak self] in
+                    Task { @MainActor in self?.refreshFromFolder() }
+                }
+                w2.start()
+                watchers.append(w2)
+            }
         }
     }
 

@@ -1,16 +1,27 @@
 import Foundation
 
 public enum HistorySource: String, Codable, CaseIterable, Sendable {
-    case grok, grokBot
+    /// The Grok ring (the whole SuperGrok weekly pool).
+    case grok
+    /// The Grok Bot ring: Grok Bot's own allowance, or its share of the shared pool (see `UsageSample.s`).
+    case grokBot
+    /// The optional Cursor ring: Cursor's share of the Grok pool (added in 0.9.3).
+    case cursor
 }
 
 public struct UsageSample: Codable, Equatable, Sendable {
     public var t: Date
     public var p: Double
-    public init(t: Date, p: Double) {
+    /// Grok Bot samples only (0.9.3+): true when `p` is Grok Bot's share of the shared Grok pool, false when
+    /// it's Grok Bot's own allowance. nil for older files and other sources (read as "own allowance").
+    public var s: Bool?
+    public init(t: Date, p: Double, s: Bool? = nil) {
         self.t = t
         self.p = p
+        self.s = s
     }
+
+    var isShare: Bool { s ?? false }
 }
 
 /// This Mac's usage samples for the 7-day graphs. Stored in
@@ -26,26 +37,56 @@ public struct UsageHistory: Codable, Equatable, Sendable {
     public var schema = 1
     public var grok: [UsageSample] = []
     public var grokBot: [UsageSample] = []
+    /// Added in 0.9.3; missing from older files (read as empty).
+    public var cursor: [UsageSample] = []
 
     public init() {}
 
+    enum CodingKeys: String, CodingKey { case schema, grok, grokBot, cursor }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schema = (try? c.decodeIfPresent(Int.self, forKey: .schema)) ?? 1
+        grok = try c.decodeIfPresent([UsageSample].self, forKey: .grok) ?? []
+        grokBot = try c.decodeIfPresent([UsageSample].self, forKey: .grokBot) ?? []
+        cursor = (try? c.decodeIfPresent([UsageSample].self, forKey: .cursor)) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schema, forKey: .schema)
+        try c.encode(grok, forKey: .grok)
+        try c.encode(grokBot, forKey: .grokBot)
+        if !cursor.isEmpty { try c.encode(cursor, forKey: .cursor) }
+    }
+
     public func samples(_ source: HistorySource) -> [UsageSample] {
-        source == .grok ? grok : grokBot
+        switch source {
+        case .grok: return grok
+        case .grokBot: return grokBot
+        case .cursor: return cursor
+        }
     }
 
     private mutating func set(_ source: HistorySource, _ value: [UsageSample]) {
-        if source == .grok { grok = value } else { grokBot = value }
+        switch source {
+        case .grok: grok = value
+        case .grokBot: grokBot = value
+        case .cursor: cursor = value
+        }
     }
 
     /// Adds a sample, keeping the list sorted and skipping redundant points.
-    public mutating func record(_ source: HistorySource, percent: Double, at time: Date) {
+    /// `shared` (Grok Bot only): whether the percent is Grok Bot's share of the shared pool.
+    public mutating func record(_ source: HistorySource, percent: Double, at time: Date, shared: Bool? = nil) {
         guard percent.isFinite else { return }
         var list = samples(source)
         if let last = list.last {
             if time == last.t { return }
-            if time > last.t, abs(last.p - percent) < 0.005, time.timeIntervalSince(last.t) < Self.minSpacing { return }
+            if time > last.t, abs(last.p - percent) < 0.005, last.s == shared,
+               time.timeIntervalSince(last.t) < Self.minSpacing { return }
         }
-        let sample = UsageSample(t: time, p: max(0, percent))
+        let sample = UsageSample(t: time, p: max(0, percent), s: shared)
         if let i = list.firstIndex(where: { $0.t > time }) { list.insert(sample, at: i) } else { list.append(sample) }
         set(source, list)
     }
@@ -68,9 +109,9 @@ public struct UsageHistory: Codable, Equatable, Sendable {
     /// - `current`: the live reading, counted for today even if it wasn't recorded yet.
     /// - `knownResets`: reset times the app knows (e.g. the current period's start).
     public func daily(_ source: HistorySource, days: Int = 7, now: Date = Date(), current: Double? = nil,
-                      knownResets: [Date] = [], calendar: Calendar = .current) -> [DailyUsage] {
+                      currentShared: Bool? = nil, knownResets: [Date] = [], calendar: Calendar = .current) -> [DailyUsage] {
         var list = series(source, now: now, window: Double(days + 1) * 86_400)
-        if let current, current.isFinite { list.append(UsageSample(t: now, p: max(0, current))) }
+        if let current, current.isFinite { list.append(UsageSample(t: now, p: max(0, current), s: currentShared)) }
         return DailyUsage.aggregate(list, days: days, now: now, knownResets: knownResets, calendar: calendar)
     }
 
@@ -127,8 +168,12 @@ public struct DailyUsage: Equatable, Sendable {
         let sorted = samples.filter { $0.p.isFinite }.sorted { $0.t < $1.t }
 
         // Moments where the value fell: that's a reset (attributed to the day of the lower reading).
+        // A drop where Grok Bot switched between its own allowance and its share of the shared pool is a
+        // change of what's measured, not a reset.
         var resets = knownResets
-        for (a, b) in zip(sorted, sorted.dropFirst()) where a.p - b.p > resetDrop { resets.append(b.t) }
+        for (a, b) in zip(sorted, sorted.dropFirst()) where a.p - b.p > resetDrop && a.isShare == b.isShare {
+            resets.append(b.t)
+        }
 
         return starts.map { start in
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)

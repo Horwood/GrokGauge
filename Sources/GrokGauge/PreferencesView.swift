@@ -89,6 +89,7 @@ struct PreferencesView: View {
                             note: { s in
                                 if s == .grokBotRing && !store.hasGrokBot { return "(Grok Bot not installed)" }
                                 if s == .grokBotRing && settingsStore.settings.ringStyle == .combined { return "(part of the combined ring)" }
+                                if s == .cursorRing { return "(Cursor's share of the Grok pool; off by default)" }
                                 return nil
                             })
             }
@@ -106,11 +107,20 @@ struct PreferencesView: View {
                 }
                 .padding(.vertical, 6)
                 Divider()
+                HStack {
+                    Toggle("Cursor history", isOn: settings.showCursorHistory)
+                    if !settingsStore.settings.isVisible(.cursorRing) {
+                        Text("(shown while the Cursor ring is on)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 6)
+                Divider()
                 PrefRow(label: "Graph style") {
                     GraphStylePicker(selection: settings.graphStyle, tint: palette.color(.normal))
                 }
                 .padding(.vertical, 4)
-                .disabled(!settingsStore.settings.showGrokHistory && !settingsStore.settings.showGrokBotHistory)
+                .disabled(!settingsStore.settings.showGrokHistory && !settingsStore.settings.showGrokBotHistory
+                          && !settingsStore.settings.showsCursorHistory)
             }
             PrefGroup(title: "Service status",
                       footer: "Dots for the public xAI (status.x.ai) and Cursor (status.cursor.com) status pages, checked about "
@@ -147,12 +157,34 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
             }
             .disabled(!settingsStore.settings.isVisible(.productBreakdown))
-            PrefGroup(title: "Rings") {
+            PrefGroup(title: "Rings",
+                      footer: "The Cursor ring shows Cursor's share of your SuperGrok weekly pool, from the same Grok usage "
+                        + "reply (no Cursor sign-in). When Grok Bot draws from that shared pool too, the Grok Bot ring "
+                        + "shows its share, labeled \u{201C}share of Grok pool\u{201D}.") {
                 Picker("Ring style", selection: settings.ringStyle) {
                     ForEach(RingStyle.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.radioGroup)
                 .padding(.vertical, 6)
+                Divider()
+                Toggle("Show the Cursor ring", isOn: Binding(
+                    get: { settingsStore.settings.isVisible(.cursorRing) },
+                    set: { on in
+                        if let i = settingsStore.settings.sections.firstIndex(where: { $0.id == .cursorRing }) {
+                            settingsStore.settings.sections[i].visible = on
+                        }
+                    }))
+                    .padding(.vertical, 6)
+                Divider()
+                PrefRow(label: "With three rings") {
+                    Picker("With three rings", selection: settings.ringSizing) {
+                        ForEach(RingSizing.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                .padding(.vertical, 4)
+                .disabled(!settingsStore.settings.isVisible(.cursorRing) || settingsStore.settings.ringStyle != .sideBySide)
             }
             PrefGroup(title: "Action buttons", footer: "Open X opens the X app if it's installed, otherwise x.com. GrokGauge reads no X data.") {
                 ReorderList(items: settings.actions, title: \.title, icon: { kind in
@@ -174,12 +206,12 @@ struct PreferencesView: View {
         let s = settingsStore.settings
         let mode = MenuBarLayout.effectiveMode(s.menuBarMode, hasGrokBot: store.hasGrokBot)
         let sample = MenuBarLayout.segments(
-            grok: store.snapshot?.roundedPercent ?? 10, bot: store.botSnapshot?.roundedPercent ?? (store.hasGrokBot ? 86 : nil),
+            grok: store.snapshot?.roundedPercent ?? 10, bot: store.botRing?.roundedPercent ?? (store.hasGrokBot ? 86 : nil),
             grokDays: store.snapshot?.timeUntilReset().map(UsageFormat.wholeDays) ?? 5,
-            botDays: store.botSnapshot?.timeUntilReset().map(UsageFormat.wholeDays),
+            botDays: store.botRing?.timeUntilReset().map(UsageFormat.wholeDays),
             mode: mode, thresholds: s.thresholds, showDays: s.showDaysToReset)
         let logoLevel = MenuBarLayout.logoLevel(grok: store.snapshot?.roundedPercent ?? 10,
-                                                bot: store.botSnapshot?.roundedPercent, thresholds: s.thresholds)
+                                                bot: store.botRing?.roundedPercent, thresholds: s.thresholds)
         return Group {
             PrefGroup(title: "Show in the menu bar",
                       footer: store.hasGrokBot ? nil : "Grok Bot isn't installed, so the Grok Bot options show Grok.") {
@@ -369,7 +401,8 @@ struct PreferencesView: View {
                     .toggleStyle(.switch).labelsHidden()
             }
             Divider()
-            PrefRow(label: "Folder", detail: s.folder.map { "\(Self.abbreviate($0)) · \(s.origin?.label ?? "")" } ?? "None") {
+            PrefRow(label: "Folder", detail: s.folder.map { "\(Self.abbreviate($0)) · \(s.origin?.label ?? "")"
+                + (s.folders.count > 1 ? " · also \(s.folders.dropFirst().map(Self.abbreviate).joined(separator: ", ")) (found automatically)" : "") } ?? "None") {
                 Button(s.folder == nil ? "Choose…" : "Change…") { history.chooseFolder() }
                 Menu("More") {
                     Button("Use iCloud Drive") { history.useICloudDrive() }
@@ -390,7 +423,8 @@ struct PreferencesView: View {
 
     private func historyStatusDetail(_ s: HistoryStore.SyncStatus) -> String {
         var parts: [String] = []
-        if let e = s.lastError { parts.append("⚠︎ \(e)") }
+        if let e = s.writeError ?? s.lastError { parts.append("⚠︎ \(e)") }
+        if let e = s.localSaveError { parts.append("⚠︎ history.json: \(e)") }
         parts.append(s.machineCount == 1 ? "1 Mac" : "\(s.machineCount) Macs")
         if !s.machineNames.isEmpty { parts[parts.count - 1] += " (\(s.machineNames.joined(separator: ", ")))" }
         parts.append(s.lastSync.map { "synced \($0.formatted(date: .omitted, time: .shortened))" } ?? "not synced yet")
@@ -424,7 +458,7 @@ struct PreferencesView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("GrokGauge").font(.title2.weight(.semibold))
                     Text("Version \(AppInfo.version)").foregroundStyle(.secondary)
-                    Text("SuperGrok and Grok Bot usage in your menu bar. Unofficial; not affiliated with xAI.")
+                    Text("SuperGrok and Grok Bot usage in your menu bar. Unofficial; not affiliated with xAI or Cursor.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -596,14 +630,27 @@ struct DiagnosticsTab: View {
         let s = history.sync
         PrefGroup(title: "History sync", footer: s.isActive ? "Files GrokGauge can't read are skipped (never deleted); the rest still merge." : nil) {
             PrefRow(label: "Status") {
-                Text(!s.enabled ? "Off" : s.folder == nil ? "Local only (no sync folder)" : s.lastError ?? "On")
-                    .foregroundStyle(.secondary)
+                Text(!s.enabled ? "Off" : s.folder == nil ? "Local only (no sync folder)" : s.writeError.map { "⚠︎ \($0)" } ?? s.lastError ?? "On")
+                    .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+            }
+            if let e = s.localSaveError {
+                Divider()
+                PrefRow(label: "This Mac's history.json", detail: "~/Library/Application Support/GrokGauge/history.json") {
+                    Text("⚠︎ \(e)").foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                }
             }
             if s.isActive {
                 Divider()
-                PrefRow(label: "Folder") {
-                    Text(s.folder.map(PreferencesView.abbreviate) ?? "—").foregroundStyle(.secondary)
-                        .lineLimit(2).multilineTextAlignment(.trailing).textSelection(.enabled)
+                PrefRow(label: s.folders.count > 1 ? "Folders" : "Folder",
+                        detail: s.folders.count > 1 ? "Your settings sync through a different folder than the MacSyncing folder found automatically, so history is written to and read from both." : nil) {
+                    Text(s.folders.map(PreferencesView.abbreviate).joined(separator: "\n")).foregroundStyle(.secondary)
+                        .lineLimit(4).multilineTextAlignment(.trailing).textSelection(.enabled)
+                }
+                Divider()
+                PrefRow(label: "This Mac's file", detail: s.ownFile.map { PreferencesView.abbreviate($0) }) {
+                    Text(s.writeError.map { "⚠︎ Write failed · \($0)\(s.writeErrorAt.map { " · " + Self.time($0) } ?? "")" }
+                         ?? s.lastWrite.map { "Written \(Self.time($0))" } ?? "Not written yet")
+                        .foregroundStyle(.secondary).multilineTextAlignment(.trailing).textSelection(.enabled)
                 }
                 Divider()
                 PrefRow(label: "Macs", detail: s.machineNames.isEmpty ? nil : s.machineNames.joined(separator: ", ")) {
@@ -669,7 +716,13 @@ enum Diagnostics {
             grokStatus = store.snapshot?.percentInferred == true ? "OK (percent inferred as 0)" : "OK"
         } else { grokStatus = "Loading" }
         let botStatus: String
-        if let p = store.botProblem { botStatus = p.tooltip } else if store.botSnapshot != nil { botStatus = "OK" } else { botStatus = "Loading" }
+        if let p = store.botProblem {
+            botStatus = p.tooltip
+        } else if let r = store.botRing {
+            botStatus = r.isShared
+                ? "OK · on the shared Grok pool (own reading \(r.own.roundedPercent)% = whole pool; ring shows its \(r.roundedPercent.map { "\($0)%" } ?? "…") share)"
+                : "OK · own weekly allowance"
+        } else { botStatus = "Loading" }
         let os = ProcessInfo.processInfo.operatingSystemVersion
         #if arch(arm64)
         let arch = "Apple silicon"
@@ -678,7 +731,7 @@ enum Diagnostics {
         #endif
         var summary = [
             "Menu bar: \(settings.menuBarMode.title)\(settings.showDaysToReset ? " + days" : "")\(settings.hideLogo ? ", no logo" : "")",
-            "Ring style: \(settings.ringStyle.title)",
+            "Ring style: \(settings.ringStyle.title)\(settings.isVisible(.cursorRing) ? ", Cursor ring on (\(settings.ringSizing.rawValue))" : "")",
             "History graphs: \(historyGraphSummary(settings))",
             "Levels: \(settings.thresholds.warningAbove)/\(settings.thresholds.criticalAbove)\(settings.notificationsLinked ? "" : ", alerts \(settings.notificationThresholds.warningAbove)/\(settings.notificationThresholds.criticalAbove)")",
             "Colors: \(settings.colors == .system ? "system" : settings.colors == .colorblindFriendly ? "colorblind-friendly" : "custom")",
@@ -716,13 +769,18 @@ func historySyncSummary(_ s: HistoryStore.SyncStatus) -> String {
                  "last sync \(s.lastSync.map(DiagnosticsReport.stamp) ?? "never")"]
     if !s.skipped.isEmpty { parts.append("\(s.skipped.count) skipped file\(s.skipped.count == 1 ? "" : "s"): \(s.skipped.map(\.reason).joined(separator: "; "))") }
     if !s.conflictCopies.isEmpty { parts.append("\(s.conflictCopies.count) conflict cop\(s.conflictCopies.count == 1 ? "y" : "ies") merged") }
-    if let e = s.lastError { parts.append("error: \(e)") }
+    if s.folders.count > 1 { parts.append("\(s.folders.count) folders (settings-sync and found folder differ)") }
+    parts.append("last write \(s.lastWrite.map(DiagnosticsReport.stamp) ?? "never")")
+    if let e = s.writeError { parts.append("write error: \(e)") }
+    if let e = s.localSaveError { parts.append("local save error: \(e)") }
+    if let e = s.lastError, e != s.writeError { parts.append("error: \(e)") }
     return parts.joined(separator: ", ")
 }
 
 /// e.g. "Bars (Grok, Grok Bot)" or "off" (for the Diagnostics settings summary).
 func historyGraphSummary(_ s: GaugeSettings) -> String {
-    let shown = [s.showGrokHistory ? "Grok" : nil, s.showGrokBotHistory ? "Grok Bot" : nil].compactMap { $0 }
+    let shown = [s.showGrokHistory ? "Grok" : nil, s.showGrokBotHistory ? "Grok Bot" : nil,
+                 s.showsCursorHistory ? "Cursor" : nil].compactMap { $0 }
     guard s.isVisible(.historyPace), !shown.isEmpty else { return "off" }
     return "\(s.graphStyle.title) (\(shown.joined(separator: ", ")))"
 }

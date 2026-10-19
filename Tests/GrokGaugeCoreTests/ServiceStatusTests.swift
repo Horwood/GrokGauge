@@ -219,7 +219,9 @@ private final class StatusHTTP: NewsHTTP, @unchecked Sendable {
         #expect(s.serviceStatus == .standard)
         #expect(s.serviceStatus.xai && s.serviceStatus.cursor && !s.serviceStatus.notify)
         // The new section lands right after the rings, shown, and the old choices are kept.
-        #expect(Array(s.sections.map(\.id).prefix(4)) == [.grokRing, .grokBotRing, .serviceStatus, .historyPace])
+        // (0.9.3's Cursor ring also lands after the rings, switched off.)
+        #expect(Array(s.sections.map(\.id).prefix(5)) == [.grokRing, .grokBotRing, .cursorRing, .serviceStatus, .historyPace])
+        #expect(!s.isVisible(.cursorRing))
         #expect(s.isVisible(.serviceStatus))
         #expect(!s.isVisible(.historyPace))
         #expect(s.showsServiceStatus)

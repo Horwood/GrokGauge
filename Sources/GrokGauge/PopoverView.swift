@@ -59,18 +59,16 @@ struct PopoverView: View {
         var out: [Block] = []
         var ringsDone = false
         let bot = store.hasGrokBot
-        let visibleRings = [DropdownSection.grokRing, .grokBotRing].filter {
-            settings.isVisible($0) && ($0 == .grokRing || bot)
-        }
+        let visibleRings = self.visibleRings
         for item in settings.sections where item.visible {
             switch item.id {
-            case .grokRing, .grokBotRing:
+            case .grokRing, .grokBotRing, .cursorRing:
                 guard visibleRings.contains(item.id) else { continue }
                 if settings.ringStyle == .stacked {
                     out.append(.stackedRing(item.id))
                     if !out.contains(.problem) { out.append(.problem) }
                 } else if !ringsDone {
-                    out.append(.rings(visibleRings))
+                    out.append(.rings(settings.sections.filter { $0.visible && visibleRings.contains($0.id) }.map(\.id)))
                     out.append(.problem)
                     ringsDone = true
                 }
@@ -81,7 +79,9 @@ struct PopoverView: View {
                 if store.snapshot != nil { out.append(.section(item.id)) }
             case .historyPace:
                 // Hidden when both graphs are switched off (or only Grok Bot's is on and it isn't installed).
-                if settings.showGrokHistory || (settings.showGrokBotHistory && bot) { out.append(.section(item.id)) }
+                if settings.showGrokHistory || (settings.showGrokBotHistory && bot) || settings.showsCursorHistory {
+                    out.append(.section(item.id))
+                }
             case .whatsNew:
                 if settings.showsWhatsNewSection { out.append(.section(item.id)) }
             case .serviceStatus:
@@ -92,6 +92,22 @@ struct PopoverView: View {
         }
         if !out.contains(.problem) { out.insert(.problem, at: 0) }
         return out
+    }
+
+    /// Rings that are switched on (Grok Bot's only when it's installed), in the default order.
+    private var visibleRings: [DropdownSection] {
+        DropdownSection.rings.filter { settings.isVisible($0) && ($0 != .grokBotRing || store.hasGrokBot) }
+    }
+
+    private var sideBySide: Bool { settings.ringStyle == .sideBySide }
+
+    /// 320 pt, or wider for three full-size rings side by side ("Keep ring size").
+    private var popoverWidth: CGFloat {
+        CGFloat(PopoverLayout.width(ringCount: visibleRings.count, sideBySide: sideBySide, sizing: settings.ringSizing))
+    }
+
+    private var ringDiameter: CGFloat {
+        CGFloat(PopoverLayout.ringDiameter(ringCount: visibleRings.count, sizing: settings.ringSizing))
     }
 
     @ViewState var topHeight: CGFloat = 0
@@ -154,7 +170,7 @@ struct PopoverView: View {
             }
         }
         .padding(Self.padding)
-        .frame(width: 320)
+        .frame(width: popoverWidth)
         .onPreferenceChange(TopHeightKey.self) { topHeight = $0 }
         .onPreferenceChange(MiddleHeightKey.self) { middleHeight = $0 }
         .onPreferenceChange(BottomHeightKey.self) { bottomHeight = $0 }
@@ -165,7 +181,7 @@ struct PopoverView: View {
     private func blockView(_ block: Block, now: Date) -> some View {
         switch block {
         case .rings(let rings):
-            RingsRow(store: store, rings: rings, combined: settings.ringStyle == .combined && rings.count == 2)
+            RingsRow(store: store, rings: rings, combined: settings.ringStyle == .combined && rings.count >= 2, size: ringDiameter)
         case .stackedRing(let section):
             StackedRing(store: store, section: section, now: now)
         case .problem:
@@ -186,7 +202,7 @@ struct PopoverView: View {
             HistoryPaceCard(store: store, history: history.history, settings: settings, now: now)
         case .resetDates:
             ResetCard(grokEnd: store.snapshot?.periodEnd,
-                      botEnd: store.hasGrokBot ? store.botSnapshot?.nextReset : nil,
+                      botEnd: store.hasGrokBot ? store.botRing?.nextReset : nil,
                       labelLines: store.hasGrokBot,
                       now: now)
         case .productBreakdown:
@@ -202,7 +218,7 @@ struct PopoverView: View {
         case .actions:
             ActionsRow(actions: settings.actions.filter(\.visible).map(\.id)
                 .filter { $0 != .openGrokBot || store.hasGrokBot })
-        case .grokRing, .grokBotRing:
+        case .grokRing, .grokBotRing, .cursorRing:
             EmptyView()
         }
     }
@@ -215,7 +231,9 @@ struct PopoverView: View {
                 .foregroundStyle(.primary)
             Text("GrokGauge")
                 .font(.system(.headline, design: .rounded))
-            Spacer()
+                .lineLimit(1)
+                .fixedSize()
+            Spacer(minLength: 4)
             Text(planLabel)
                 .font(.caption2.weight(.semibold))
                 .textCase(.uppercase)
@@ -223,22 +241,16 @@ struct PopoverView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(.fill.tertiary, in: Capsule())
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             // Same pattern as ClipGauge: the gear opens a small menu with Settings… and Quit.
-            Menu {
-                Button("Settings…", action: openPreferences)
-                    .keyboardShortcut(",", modifiers: .command)
-                Divider()
-                Button("Quit GrokGauge") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q", modifiers: .command)
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 13, weight: .medium))
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Settings (⌘,) and Quit")
-            .accessibilityLabel("Settings and Quit")
+            // An AppKit button (not a SwiftUI Menu) so the very first click opens it, even while the
+            // dropdown is still becoming the key window.
+            GearMenuButton(openSettings: openPreferences)
+                .frame(width: 18, height: 20)
+                .help("Settings (⌘,) and Quit")
+        }
+        .background {
             // ⌘, still opens Settings straight from the dropdown without opening the menu first.
             Button("Settings", action: openPreferences)
                 .keyboardShortcut(",", modifiers: .command)
@@ -286,6 +298,7 @@ private struct RingsRow: View {
     @ObservedObject var store: UsageStore
     let rings: [DropdownSection]
     let combined: Bool
+    var size: CGFloat = 104
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -294,20 +307,22 @@ private struct RingsRow: View {
         } else {
             HStack(spacing: 0) {
                 ForEach(rings, id: \.self) { r in
-                    RingContent.make(r, store: store).ringView(size: 104).frame(maxWidth: .infinity)
+                    RingContent.make(r, store: store).ringView(size: size)
+                        .padding(.horizontal, rings.count >= 3 ? 3 : 0)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
     }
 
+    /// One ring for the highest reading; the caption lists every ring's number.
     private var combinedRing: some View {
-        let g = RingContent.make(.grokRing, store: store)
-        let b = RingContent.make(.grokBotRing, store: store)
-        let botHigher = (b.percent ?? -1) > (g.percent ?? -1)
-        var top = botHigher ? b : g
-        let parts = [g, b].map { c in "\(c.title) \(c.rounded.map { "\($0)%" } ?? "—")" }
-        top.title = botHigher ? "Grok Bot (higher)" : (b.percent == nil ? "Grok" : "Grok (higher)")
-        top.caption = parts.joined(separator: " · ")
+        let all = rings.map { RingContent.make($0, store: store) }
+        let topIndex = all.indices.max { (all[$0].percent ?? -1) < (all[$1].percent ?? -1) } ?? 0
+        var top = all[topIndex]
+        let others = all.enumerated().filter { $0.offset != topIndex && $0.element.percent != nil }
+        if !others.isEmpty { top.title += all.count > 2 ? " (highest)" : " (higher)" }
+        top.caption = all.map { c in "\(c.title) \(c.rounded.map { "\($0)%" } ?? "—")" }.joined(separator: " · ")
         top.captionAction = nil
         return top.ringView(size: 116)
     }
@@ -327,6 +342,33 @@ private struct RingContent {
 
     @MainActor
     static func make(_ section: DropdownSection, store: UsageStore) -> RingContent {
+        if section == .cursorRing {
+            let s = store.snapshot
+            let c = store.cursorShare
+            var caption: String?
+            var help = "Cursor's share of your SuperGrok weekly pool, from the same Grok usage reply as the Grok ring "
+                + "(the Cursor row in Grok by product). No Cursor sign-in needed."
+            if s != nil {
+                caption = c == nil ? "Not in your Grok pool" : "share of Grok pool"
+                if c == nil { help = "xAI's usage reply doesn't list Cursor for your account right now." }
+            } else if let p = store.problem {
+                caption = p.ringCaption
+                help = p.title
+            }
+            return RingContent(title: "Cursor", percent: c?.percent, isLoading: s == nil && store.problem == nil,
+                               caption: caption, captionHelp: help, captionAction: nil,
+                               detail: c == nil ? nil : s?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
+        }
+        if section == .grokBotRing, let r = store.botRing, r.isShared {
+            return RingContent(
+                title: "Grok Bot", percent: r.percent, isLoading: r.percent == nil,
+                caption: "share of Grok pool",
+                captionHelp: "Grok Bot now draws from your shared SuperGrok weekly pool, so this ring shows Grok Bot's "
+                    + "share of it (the Grok Bot row in Grok by product). Grok Bot's own reading, "
+                    + "\(r.own.roundedPercent)%, is the whole pool, the same as the Grok ring.",
+                captionAction: nil,
+                detail: r.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
+        }
         if section == .grokBotRing {
             let b = store.botSnapshot
             let problem = store.botProblem
@@ -347,7 +389,12 @@ private struct RingContent {
                 caption = "Inferred (none reported)"
                 help = "Grok's reply had no usage percentage. With an otherwise normal reply that means nothing used yet, so GrokGauge shows 0%."
             } else {
-                caption = s.period == .weekly ? "SuperGrok weekly" : s.period.label
+                // "pool" everywhere: the Grok ring is the whole pool; the Grok Bot and Cursor rings and the
+                // Grok by product rows are shares of it.
+                caption = s.period == .weekly ? "SuperGrok weekly pool" : "\(s.period.label) pool"
+                let used = s.products.filter { $0.percent > 0 }
+                    .map { "\($0.name) \($0.percent < 1 ? "<1" : String(Int($0.percent.rounded())))%" }
+                help = "All products together" + (used.isEmpty ? "." : ": " + used.joined(separator: ", ") + ". See Grok by product.")
             }
         } else if let p = store.problem {
             caption = p.ringCaption
@@ -518,11 +565,22 @@ private struct HistoryPaceCard: View {
                             knownResets: grokResets, pace: grokPace, style: settings.graphStyle, now: now)
             }
             if settings.showGrokBotHistory && store.hasGrokBot {
-                SourceTrend(name: "Grok Bot", history: history, source: .grokBot, current: store.botSnapshot?.percent,
+                SourceTrend(name: store.botShared ? "Grok Bot (share of pool)" : "Grok Bot", history: history, source: .grokBot,
+                            current: store.botRing?.percent, currentShared: store.botRing.map(\.isShared),
                             knownResets: botResets, pace: botPace, style: settings.graphStyle, now: now)
+            }
+            if settings.showsCursorHistory {
+                SourceTrend(name: "Cursor (share of pool)", history: history, source: .cursor, current: store.cursorShare?.percent,
+                            knownResets: grokResets, pace: cursorPace, style: settings.graphStyle, now: now)
             }
         }
         .card()
+    }
+
+    private var cursorPace: PaceStatus? {
+        guard let s = store.snapshot, let end = s.periodEnd, let c = store.cursorShare else { return nil }
+        return Pace.project(percent: c.percent, periodStart: s.periodStart ?? Pace.weeklyStart(forReset: end),
+                            periodEnd: end, now: now)
     }
 
     private var grokResets: [Date] {
@@ -531,7 +589,7 @@ private struct HistoryPaceCard: View {
     }
 
     private var botResets: [Date] {
-        guard let end = store.botSnapshot?.nextReset else { return [] }
+        guard let end = store.botRing?.nextReset else { return [] }
         return [Pace.weeklyStart(forReset: end)]
     }
 
@@ -541,9 +599,11 @@ private struct HistoryPaceCard: View {
                             periodEnd: end, now: now)
     }
 
+    /// Pace for what the Grok Bot ring shows (its share when the pool is shared).
     private var botPace: PaceStatus? {
-        guard let b = store.botSnapshot, let end = b.nextReset else { return nil }
-        return Pace.project(percent: b.percent, periodStart: Pace.weeklyStart(forReset: end), periodEnd: end, now: now)
+        guard let b = store.botRing, let p = b.percent, let end = b.nextReset else { return nil }
+        let start = b.isShared ? (store.snapshot?.periodStart ?? Pace.weeklyStart(forReset: end)) : Pace.weeklyStart(forReset: end)
+        return Pace.project(percent: p, periodStart: start, periodEnd: end, now: now)
     }
 }
 
@@ -552,6 +612,8 @@ private struct SourceTrend: View {
     let history: UsageHistory
     let source: HistorySource
     let current: Double?
+    /// Grok Bot only: whether `current` is its share of the shared pool (matches the recorded samples).
+    var currentShared: Bool? = nil
     let knownResets: [Date]
     let pace: PaceStatus?
     let style: GraphStyle
@@ -573,7 +635,7 @@ private struct SourceTrend: View {
             .accessibilityElement(children: .combine)
             switch style {
             case .bars:
-                let days = history.daily(source, now: now, current: current, knownResets: knownResets)
+                let days = history.daily(source, now: now, current: current, currentShared: currentShared, knownResets: knownResets)
                 if days.contains(where: { $0.peak != nil }) {
                     DailyBars(days: days, sourceName: name)
                         .frame(height: 54)
@@ -921,7 +983,7 @@ private struct ProductBreakdown: View {
     var body: some View {
         let color = palette.color(forRounded: level)
         VStack(alignment: .leading, spacing: 8) {
-            Text("GROK BY PRODUCT")
+            Text("GROK POOL BY PRODUCT")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(products) { p in
@@ -932,7 +994,9 @@ private struct ProductBreakdown: View {
                         .frame(width: 16)
                     Text(p.name)
                         .font(.callout)
-                        .frame(width: 64, alignment: .leading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .frame(width: 66, alignment: .leading)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(.fill.tertiary)
@@ -1211,5 +1275,85 @@ private struct UpdateBanner: View {
         }
         .padding(10)
         .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+// MARK: - Gear menu
+
+/// The header's gear: one click opens a small menu with Settings… and Quit GrokGauge.
+///
+/// 0.9.2 used a SwiftUI `Menu`. Inside the status item's popover, the first click on it only made the popover's
+/// window key (the app activates asynchronously after the popover opens), so the menu needed a second click.
+/// This AppKit button accepts the first mouse-down and pops the menu up itself.
+struct GearMenuButton: NSViewRepresentable {
+    var openSettings: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(openSettings: openSettings) }
+
+    func makeNSView(context: Context) -> FirstClickMenuButton {
+        let b = FirstClickMenuButton()
+        b.isBordered = false
+        b.bezelStyle = .shadowlessSquare
+        b.setButtonType(.momentaryChange)
+        b.imagePosition = .imageOnly
+        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        b.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings and Quit")?
+            .withSymbolConfiguration(config)
+        b.contentTintColor = .labelColor
+        b.toolTip = "Settings (⌘,) and Quit"
+        b.setAccessibilityLabel("Settings and Quit")
+        b.menuProvider = { [weak coordinator = context.coordinator] in coordinator?.makeMenu() }
+        b.target = b
+        b.action = #selector(FirstClickMenuButton.showMenu(_:))   // keyboard / VoiceOver press
+        return b
+    }
+
+    func updateNSView(_ nsView: FirstClickMenuButton, context: Context) {
+        context.coordinator.openSettings = openSettings
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var openSettings: () -> Void
+        init(openSettings: @escaping () -> Void) { self.openSettings = openSettings }
+
+        func makeMenu() -> NSMenu {
+            let menu = NSMenu()
+            menu.autoenablesItems = false
+            let settings = NSMenuItem(title: "Settings…", action: #selector(settingsChosen(_:)), keyEquivalent: ",")
+            settings.keyEquivalentModifierMask = .command
+            settings.target = self
+            menu.addItem(settings)
+            menu.addItem(.separator())
+            let quit = NSMenuItem(title: "Quit GrokGauge", action: #selector(quitChosen(_:)), keyEquivalent: "q")
+            quit.keyEquivalentModifierMask = .command
+            quit.target = self
+            menu.addItem(quit)
+            return menu
+        }
+
+        @objc func settingsChosen(_ sender: Any?) {
+            // Let the menu finish closing before the popover closes and Settings opens.
+            DispatchQueue.main.async { [openSettings] in openSettings() }
+        }
+
+        @objc func quitChosen(_ sender: Any?) { NSApp.terminate(nil) }
+    }
+}
+
+final class FirstClickMenuButton: NSButton {
+    var menuProvider: (() -> NSMenu?)?
+
+    /// The fix: a click that also makes the popover key still counts as a click on the gear.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) { showMenu(self) }
+
+    @objc func showMenu(_ sender: Any?) {
+        guard let menu = menuProvider?() else { return }
+        highlight(true)
+        defer { highlight(false) }
+        let y = isFlipped ? bounds.maxY + 4 : bounds.minY - 4
+        menu.popUp(positioning: nil, at: NSPoint(x: bounds.minX, y: y), in: self)
     }
 }

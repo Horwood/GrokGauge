@@ -6,7 +6,8 @@ import Testing
     @Test func defaultsMatchSpec() {
         let s = GaugeSettings()
         #expect(s.sections.map(\.id) == DropdownSection.allCases)
-        #expect(s.sections.allSatisfy { $0.visible })
+        #expect(s.sections.allSatisfy { $0.visible == ($0.id != .cursorRing) })   // Cursor ring off by default
+        #expect(s.ringSizing == .keepSize && s.showCursorHistory && !s.showsCursorHistory)
         #expect(s.actions.map(\.id) == [.openGrok, .openGrokBot, .openX])
         #expect(s.actions.allSatisfy { $0.visible })      // Open X shown by default
         #expect(s.ringStyle == .sideBySide)

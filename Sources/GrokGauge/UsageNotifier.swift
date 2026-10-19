@@ -60,9 +60,11 @@ final class UsageNotifier: NSObject, UNUserNotificationCenterDelegate {
                  reset: snapshot.periodEnd)
     }
 
-    func evaluate(_ snapshot: GrokBotSnapshot, thresholds: LevelThresholds) {
-        evaluate(Self.grokBot, rounded: snapshot.roundedPercent, thresholds: thresholds,
-                 period: snapshot.periodKey, poolName: "Grok Bot's weekly usage", reset: snapshot.nextReset)
+    /// The Grok Bot ring's number: Grok Bot's own allowance, or (when Grok Bot is on the shared pool) its
+    /// share of that pool. A share has its own period key, so the pool's alerts come from the Grok ring only.
+    func evaluateBot(rounded: Int, shared: Bool, periodKey: String, reset: Date?, thresholds: LevelThresholds) {
+        evaluate(Self.grokBot, rounded: rounded, thresholds: thresholds, period: periodKey,
+                 poolName: shared ? "the shared weekly Grok pool on Grok Bot" : "Grok Bot's weekly usage", reset: reset)
     }
 
     private func evaluate(_ source: Source, rounded: Int, thresholds: LevelThresholds, period: String,

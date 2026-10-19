@@ -18,6 +18,8 @@ public struct MachineHistoryFile: Codable, Equatable, Sendable {
     public var updatedAt: Date
     public var grok: [UsageSample]
     public var grokBot: [UsageSample]
+    /// Added in 0.9.3 (optional, so 0.9.2 files still read and 0.9.2 ignores it).
+    public var cursor: [UsageSample]?
 
     public init(machineID: String, machineName: String, updatedAt: Date = Date(), history: UsageHistory) {
         app = Self.appName
@@ -28,12 +30,14 @@ public struct MachineHistoryFile: Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
         grok = history.grok
         grokBot = history.grokBot
+        cursor = history.cursor.isEmpty ? nil : history.cursor
     }
 
     public var history: UsageHistory {
         var h = UsageHistory()
         h.grok = grok.sorted { $0.t < $1.t }
         h.grokBot = grokBot.sorted { $0.t < $1.t }
+        h.cursor = (cursor ?? []).sorted { $0.t < $1.t }
         return h
     }
 }
@@ -138,6 +142,7 @@ public enum HistorySync {
         let sane: (UsageSample) -> Bool = { $0.p.isFinite && $0.p >= 0 && $0.p <= 1_000 && $0.t.timeIntervalSince1970 > 0 }
         f.grok = f.grok.filter(sane)
         f.grokBot = f.grokBot.filter(sane)
+        f.cursor = f.cursor?.filter(sane)
         f.machineName = String(f.machineName.prefix(80))
         return f
     }
@@ -197,8 +202,18 @@ public enum HistorySync {
                              bucket: TimeInterval = HistorySync.bucket) -> UsageHistory {
         var out = UsageHistory()
         out.grok = mergeSamples([local.grok] + others.map(\.grok), now: now, bucket: bucket)
-        out.grokBot = mergeSamples([local.grokBot] + others.map(\.grokBot), now: now, bucket: bucket)
+        out.grokBot = mergeSamples(droppingOutdatedBotSamples([local.grokBot] + others.map(\.grokBot)),
+                                   now: now, bucket: bucket)
+        out.cursor = mergeSamples([local.cursor] + others.map(\.cursor), now: now, bucket: bucket)
         return out
+    }
+
+    /// Macs still on 0.9.2 keep recording Grok Bot's whole reading after a newer Mac has started recording
+    /// what the 0.9.3 ring shows (tagged with `s`). Untagged samples newer than the first tagged one would mix
+    /// two different measures in one graph, so they're dropped; everything before stays.
+    static func droppingOutdatedBotSamples(_ lists: [[UsageSample]]) -> [[UsageSample]] {
+        guard let firstTagged = lists.flatMap({ $0.filter { $0.s != nil } }).map(\.t).min() else { return lists }
+        return lists.map { list in list.filter { $0.s != nil || $0.t < firstTagged } }
     }
 
     static func mergeSamples(_ lists: [[UsageSample]], now: Date, bucket: TimeInterval) -> [UsageSample] {
@@ -209,7 +224,10 @@ public enum HistorySync {
             for s in list where s.p.isFinite && s.p >= 0 && s.t >= oldest && s.t <= newest {
                 let key = Int64((s.t.timeIntervalSince1970 / bucket).rounded(.down))
                 if let cur = best[key] {
-                    if s.p > cur.p || (s.p == cur.p && s.t > cur.t) { best[key] = s }
+                    // Same bucket, different measure (share vs. allowance): the newer-style tagged sample wins.
+                if cur.isShare != s.isShare {
+                    if s.s != nil && (cur.s == nil || s.t > cur.t) { best[key] = s }
+                } else if s.p > cur.p || (s.p == cur.p && s.t > cur.t) { best[key] = s }
                 } else {
                     best[key] = s
                 }
@@ -232,7 +250,8 @@ public enum HistorySync {
             let s = samples[i]
             if i + 1 < samples.count, let prev = out.last {
                 let next = samples[i + 1]
-                if prev.p - s.p > DailyUsage.resetDrop, prev.p - next.p <= DailyUsage.resetDrop { continue }
+                if prev.p - s.p > DailyUsage.resetDrop, prev.p - next.p <= DailyUsage.resetDrop,
+                   prev.isShare == s.isShare { continue }
             }
             out.append(s)
         }
@@ -267,6 +286,22 @@ public enum HistorySyncFolder {
         if let settingsSync { return (settingsSync, .settingsSync) }
         if let detected { return (detected, .detected) }
         return nil
+    }
+
+    /// Every folder history is written to and read from. A folder picked for history is used alone. Otherwise
+    /// both the settings-sync folder and the auto-detected MacSyncing folder are used when they differ, so a
+    /// Mac whose settings sync through a subfolder (e.g. "MacSyncing/xAI") still meets Macs that use the
+    /// MacSyncing folder itself. The first entry is the primary folder (shown in Settings).
+    public static func candidates(chosen: URL?, settingsSync: URL?, detected: URL?) -> [(url: URL, origin: HistoryFolderOrigin)] {
+        if let chosen { return [(chosen, .chosen)] }
+        var out: [(url: URL, origin: HistoryFolderOrigin)] = []
+        for (url, origin) in [(settingsSync, HistoryFolderOrigin.settingsSync), (detected, .detected)] {
+            guard let url else { continue }
+            let key = url.standardizedFileURL.resolvingSymlinksInPath().path
+            if out.contains(where: { $0.url.standardizedFileURL.resolvingSymlinksInPath().path == key }) { continue }
+            out.append((url, origin))
+        }
+        return out
     }
 
     /// "Sync history across Macs" is on by default; it only does anything once there's a folder.

@@ -32,7 +32,7 @@ enum DebugCLI {
         let client = BillingClient(appVersion: AppInfo.version)
         do {
             let s = try await client.fetch()
-            if json { printJSON(s, bot: bot) } else { printText(s) }
+            if json { printJSON(s, bot: bot) } else { printText(s); printRings(s, bot: bot) }
             return 0
         } catch let e as FetchError {
             let message: String
@@ -112,6 +112,25 @@ enum DebugCLI {
         print(lines.joined(separator: "\n"))
     }
 
+    /// The three rings exactly as the dropdown would show them right now.
+    private static func printRings(_ s: UsageSnapshot, bot: Result<GrokBotSnapshot, Error>) {
+        var lines = ["", "Rings (as GrokGauge shows them):", "  Grok:      \(s.roundedPercent)% (whole SuperGrok \(s.period.label.lowercased()) pool)"]
+        if case .success(let b) = bot {
+            let r = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil)
+            lines.append(r.isShared
+                ? "  Grok Bot:  \(r.roundedPercent ?? 0)% share of Grok pool  [shared pool detected: own reading \(String(format: "%.2f", b.percent))% resets with the pool]"
+                : "  Grok Bot:  \(r.roundedPercent ?? 0)% own weekly allowance  [not shared with the Grok pool]")
+        } else {
+            lines.append("  Grok Bot:  no reading")
+        }
+        if let c = PoolSharing.cursorShare(in: s) {
+            lines.append("  Cursor:    \(String(format: "%.1f", c.percent))% share of Grok pool (optional ring, off by default)")
+        } else {
+            lines.append("  Cursor:    not in the billing reply (ring shows \u{201C}Not in your Grok pool\u{201D})")
+        }
+        print(lines.joined(separator: "\n"))
+    }
+
     private static func printBot(_ result: Result<GrokBotSnapshot, Error>) {
         var lines = ["", "Grok Bot (read from \(GrokBotUsageReader.persistenceDirectory().path), no network):"]
         switch result {
@@ -162,6 +181,23 @@ enum DebugCLI {
         ]
         if let start = s.periodStart { obj["periodStart"] = iso(start) }
         if let end = s.periodEnd { obj["periodEnd"] = iso(end) }
+        var rings: [String: Any] = ["grok": ["percent": s.percent, "roundedPercent": s.roundedPercent, "caption": "whole pool"]]
+        if let c = PoolSharing.cursorShare(in: s) {
+            rings["cursor"] = ["percent": c.percent, "product": c.key, "caption": "share of Grok pool"]
+        } else {
+            rings["cursor"] = ["status": "notReported"]
+        }
+        if case .success(let b) = bot {
+            let r = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil)
+            var o: [String: Any] = ["mode": r.isShared ? "sharedPool" : "separateAllowance",
+                                    "sharedPoolDetected": r.isShared, "ownPercent": b.percent,
+                                    "caption": r.isShared ? "share of Grok pool" : "own weekly allowance"]
+            if let p = r.percent { o["percent"] = p }
+            if let p = r.roundedPercent { o["roundedPercent"] = p }
+            if let share = PoolSharing.botShare(in: s) { o["poolShare"] = share.percent }
+            rings["grokBot"] = o
+        }
+        obj["rings"] = rings
         switch bot {
         case .success(let b):
             obj["grokBot"] = botJSON(b, status: "ok")

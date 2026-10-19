@@ -103,7 +103,7 @@ public enum UsageParser {
                 byCanonical[match.name] = (raw, existing + pct)
             } else {
                 extras.append(ProductShare(key: raw, name: displayName(for: raw),
-                                           symbol: "square.grid.2x2.fill", percent: pct))
+                                           symbol: extraSymbol(forKey: key), percent: pct))
             }
         }
 
@@ -114,8 +114,19 @@ public enum UsageParser {
         return fixed + extras.sorted { $0.percent > $1.percent }
     }
 
+    /// Symbols for products outside the canonical five (matching the rings and buttons).
+    static func extraSymbol(forKey key: String) -> String {
+        switch key {
+        case "grokbot", "bot": return "sparkles"
+        case "cursor": return "cursorarrow.rays"
+        default: return "square.grid.2x2.fill"
+        }
+    }
+
     /// "GrokAppBuilder" -> "App Builder", "PRODUCT_FOO_BAR" -> "Foo Bar"
     static func displayName(for raw: String) -> String {
+        // Grok Bot's share of the pool: named like the Grok Bot ring (0.9.2 showed "Bot").
+        if normalizedKey(raw) == "grokbot" { return "Grok Bot" }
         var s = raw
         if s.uppercased() == s {
             s = s.lowercased()

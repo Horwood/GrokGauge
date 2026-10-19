@@ -100,12 +100,18 @@ public struct ProductBreakdownSettings: Codable, Equatable, Sendable {
         return sorted.map(\.p)
     }
 
+    /// Product names that changed between versions (old name -> new name).
+    static let renamedProducts = ["Bot": "Grok Bot"]
+
     /// Drops duplicates and empty names; adds any missing canonical product after its nearest canonical
     /// predecessor (so a list saved before a product existed still gets it, in a sensible place).
     static func normalized(_ items: [ProductToggle]) -> [ProductToggle] {
         var seen = Set<String>()
         var out: [ProductToggle] = []
-        for item in items where !item.id.isEmpty && !seen.contains(item.id) {
+        for var item in items where !item.id.isEmpty {
+            // 0.9.2 listed Grok Bot's share as "Bot"; keep its place and checkbox under the new name.
+            if let renamed = renamedProducts[item.id] { item.id = renamed }
+            guard !seen.contains(item.id) else { continue }
             seen.insert(item.id)
             out.append(item)
         }
@@ -138,6 +144,6 @@ private struct LenientProductToggle: Decodable {
 public extension UsageParser {
     /// SF Symbol for a product name (the generic grid for products xAI adds later).
     static func symbol(forProduct name: String) -> String {
-        canonical.first { $0.name == name }?.symbol ?? "square.grid.2x2.fill"
+        canonical.first { $0.name == name }?.symbol ?? extraSymbol(forKey: normalizedKey(name))
     }
 }

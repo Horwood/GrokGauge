@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsStore = SettingsStore()
     private let history = HistoryStore()
     private let updates = UpdateMonitor()
-    private lazy var store = UsageStore(notifier: notifier, history: history) { [unowned self] in
+    private lazy var store = UsageStore(notifier: notifier, history: history, defaults: .standard) { [unowned self] in
         self.settingsStore.settings
     }
     private lazy var whatsNew = WhatsNewStore(
@@ -121,12 +121,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let s = settingsStore.settings
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         let grok = store.snapshot?.roundedPercent
-        let bot = store.botSnapshot?.roundedPercent
+        let bot = store.botRing?.roundedPercent
         let mode = MenuBarLayout.effectiveMode(s.menuBarMode, hasGrokBot: store.hasGrokBot)
         var segments = MenuBarLayout.segments(
             grok: grok, bot: bot,
             grokDays: store.snapshot?.timeUntilReset().map(UsageFormat.wholeDays),
-            botDays: store.botSnapshot?.timeUntilReset().map(UsageFormat.wholeDays),
+            botDays: store.botRing?.timeUntilReset().map(UsageFormat.wholeDays),
             mode: mode, thresholds: s.thresholds, showDays: s.showDaysToReset)
 
         if segments.isEmpty && mode != .logoOnly {
@@ -181,14 +181,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var parts: [String] = []
         if let g = grok { parts.append("Grok \(g) percent, \(palette.level(g).spoken)") }
         else if let p = store.problem { parts.append("Grok: \(p.title)") }
-        if let b = bot { parts.append("Grok Bot \(b) percent, \(palette.level(b).spoken)") }
+        if let b = bot {
+            parts.append("Grok Bot \(b) percent\(store.botShared ? " of the Grok pool" : ""), \(palette.level(b).spoken)")
+        }
         return parts.isEmpty ? "Loading" : parts.joined(separator: "; ")
     }
 
     private func tooltip() -> String {
         var lines: [String] = []
         if let s = store.snapshot {
-            var line = "Grok: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used"
+            var line = "Grok: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used (all products)"
             if let left = s.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
             lines.append(line)
             if let p = store.problem { lines.append("⚠︎ \(p.title)") }
@@ -197,9 +199,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             lines.append("Grok: loading")
         }
-        if let b = store.botSnapshot {
-            var line = "Grok Bot: \(b.roundedPercent)% of weekly usage"
-            if let left = b.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
+        if let b = store.botRing, let rounded = b.roundedPercent {
+            var line = b.isShared ? "Grok Bot: \(rounded)% of the shared Grok pool (its share)"
+                                  : "Grok Bot: \(rounded)% of weekly usage"
+            if !b.isShared, let left = b.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
             lines.append(line)
         } else if let p = store.botProblem, p != .notInstalled {
             lines.append("Grok Bot: \(p.tooltip)")

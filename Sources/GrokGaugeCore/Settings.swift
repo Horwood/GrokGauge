@@ -4,7 +4,7 @@ import Foundation
 
 /// The sections of the dropdown, in their default order.
 public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiable {
-    case grokRing, grokBotRing, serviceStatus, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
+    case grokRing, grokBotRing, cursorRing, serviceStatus, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
 
     public var id: String { rawValue }
 
@@ -12,6 +12,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         switch self {
         case .grokRing: return "Grok ring"
         case .grokBotRing: return "Grok Bot ring"
+        case .cursorRing: return "Cursor ring"
         case .serviceStatus: return "Service status"
         case .historyPace: return "History & pace"
         case .resetDates: return "Reset dates"
@@ -27,6 +28,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         switch self {
         case .grokRing: return "circle.circle"
         case .grokBotRing: return "sparkles"
+        case .cursorRing: return "cursorarrow.rays"
         case .serviceStatus: return "dot.radiowaves.left.and.right"
         case .historyPace: return "chart.xyaxis.line"
         case .resetDates: return "calendar.badge.clock"
@@ -35,6 +37,25 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         case .whatsNew: return "newspaper"
         case .refreshRow: return "arrow.clockwise"
         case .actions: return "square.grid.2x2"
+        }
+    }
+
+    /// The usage rings, in their default order.
+    public static let rings: [DropdownSection] = [.grokRing, .grokBotRing, .cursorRing]
+    public var isRing: Bool { Self.rings.contains(self) }
+    /// Off until switched on in Settings (added in 0.9.3).
+    public var visibleByDefault: Bool { self != .cursorRing }
+}
+
+/// With three rings side by side: keep each ring its usual size (the dropdown gets wider), or shrink the rings
+/// so all three fit the usual width.
+public enum RingSizing: String, Codable, CaseIterable, Sendable, Identifiable {
+    case keepSize, fitWidth
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .keepSize: return "Keep ring size (wider dropdown)"
+        case .fitWidth: return "Shrink rings to fit the usual width"
         }
     }
 }
@@ -272,6 +293,10 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public var productBreakdown: ProductBreakdownSettings
     /// xAI and Cursor status dots (added in 0.9.2).
     public var serviceStatus: ServiceStatusSettings
+    /// Ring size when three rings are side by side (added in 0.9.3).
+    public var ringSizing: RingSizing
+    /// The Cursor graph in "Last 7 days & pace", shown while the Cursor ring is on (added in 0.9.3).
+    public var showCursorHistory: Bool
 
     // Menu bar
     public var menuBarMode: MenuBarMode
@@ -301,6 +326,8 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
                 whatsNew: WhatsNewSettings = .standard,
                 productBreakdown: ProductBreakdownSettings = .standard,
                 serviceStatus: ServiceStatusSettings = .standard,
+                ringSizing: RingSizing = .keepSize,
+                showCursorHistory: Bool = true,
                 menuBarMode: MenuBarMode = .highest,
                 showDaysToReset: Bool = false,
                 hideLogo: Bool = false,
@@ -321,6 +348,8 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         self.whatsNew = whatsNew
         self.productBreakdown = productBreakdown
         self.serviceStatus = serviceStatus
+        self.ringSizing = ringSizing
+        self.showCursorHistory = showCursorHistory
         self.menuBarMode = menuBarMode
         self.showDaysToReset = showDaysToReset
         self.hideLogo = hideLogo
@@ -334,7 +363,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         self.modifiedAt = modifiedAt
     }
 
-    public static let defaultSections: [SectionItem] = DropdownSection.allCases.map { SectionItem($0) }
+    public static let defaultSections: [SectionItem] = DropdownSection.allCases.map { SectionItem($0, visible: $0.visibleByDefault) }
     public static let defaultActions: [ActionItem] = ActionButtonKind.allCases.map { ActionItem($0) }
     public static let defaults = GaugeSettings()
 
@@ -359,8 +388,11 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
 
     /// Whether the history section is drawn: its own checkbox is on and at least one graph is chosen.
     public var showsHistorySection: Bool {
-        isVisible(.historyPace) && (showGrokHistory || showGrokBotHistory)
+        isVisible(.historyPace) && (showGrokHistory || showGrokBotHistory || showsCursorHistory)
     }
+
+    /// The Cursor graph follows the Cursor ring: it's only drawn while that ring is on.
+    public var showsCursorHistory: Bool { isVisible(.cursorRing) && showCursorHistory }
 
     /// Equality that ignores `modifiedAt` (used to detect real changes).
     public func sameContent(as other: GaugeSettings) -> Bool {
@@ -379,6 +411,8 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         graphStyle = .bars
         showGrokHistory = true
         showGrokBotHistory = true
+        showCursorHistory = true
+        ringSizing = .keepSize
         productBreakdown = .standard
     }
 
@@ -403,7 +437,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: missing keys fall back to defaults, unknown values are ignored)
 
     enum CodingKeys: String, CodingKey {
-        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, whatsNew, productBreakdown, serviceStatus, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
+        case sections, ringStyle, actions, graphStyle, showGrokHistory, showGrokBotHistory, whatsNew, productBreakdown, serviceStatus, ringSizing, showCursorHistory, menuBarMode, showDaysToReset, hideLogo, hotKey, thresholds,
              colors, notificationsLinked, notificationThresholds, refreshInterval, checkForUpdates, modifiedAt
     }
 
@@ -425,6 +459,9 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
             // Added in 0.9.2: older settings get all products shown, canonical order, My order.
             productBreakdown: value(.productBreakdown, d.productBreakdown),
             serviceStatus: value(.serviceStatus, d.serviceStatus),
+            // Added in 0.9.3.
+            ringSizing: value(.ringSizing, d.ringSizing),
+            showCursorHistory: value(.showCursorHistory, d.showCursorHistory),
             menuBarMode: value(.menuBarMode, d.menuBarMode),
             showDaysToReset: value(.showDaysToReset, d.showDaysToReset),
             hideLogo: value(.hideLogo, d.hideLogo),
@@ -444,7 +481,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         return raw.compactMap { r in
             // Case names equal raw values for these enums.
             guard let id = ID.allCases.first(where: { "\($0)" == r.id }) else { return nil }
-            return OrderedToggle(id, visible: r.visible ?? true)
+            return OrderedToggle(id, visible: r.visible ?? ((id as? DropdownSection)?.visibleByDefault ?? true))
         }
     }
 
@@ -459,6 +496,8 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
         try c.encode(whatsNew, forKey: .whatsNew)
         try c.encode(productBreakdown, forKey: .productBreakdown)
         try c.encode(serviceStatus, forKey: .serviceStatus)
+        try c.encode(ringSizing, forKey: .ringSizing)
+        try c.encode(showCursorHistory, forKey: .showCursorHistory)
         try c.encode(menuBarMode, forKey: .menuBarMode)
         try c.encode(showDaysToReset, forKey: .showDaysToReset)
         try c.encode(hideLogo, forKey: .hideLogo)

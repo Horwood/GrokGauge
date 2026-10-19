@@ -45,6 +45,22 @@ enum PreviewRenderer {
                             to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
 
+        // The optional Cursor ring (0.9.3): full-size rings in a wider dropdown, and rings shrunk to the usual width.
+        for sizing in RingSizing.allCases {
+            var three = GaugeSettings()
+            three.sections = three.sections.map { item in
+                var i = item
+                if i.id == .cursorRing { i.visible = true }
+                return i
+            }
+            three.ringSizing = sizing
+            let view = PopoverView(store: store, settingsStore: SettingsStore.preview(three), history: historyStore,
+                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                   sizing: PopoverSizing(), status: status)
+            ok = renderView(view, scheme: .dark, background: true,
+                            to: dir.appendingPathComponent("popover-three-rings-\(sizing.rawValue)-dark\(suffix).png")) && ok
+        }
+
         if demo {
             // Layout variants and the "xAI changed something" state, for docs and review.
             var stacked = GaugeSettings()
@@ -213,6 +229,7 @@ enum PreviewRenderer {
                 share("GrokVoice", "Voice", "waveform", 3.5),
                 share("GrokBuild", "Build", "hammer.fill", 6.2),
                 share("Api", "API", "curlybraces", 2.0),
+                share("Cursor", "Cursor", "square.grid.2x2.fill", 3.1),
             ],
             prepaidBalanceCents: 1_446, onDemandUsedCents: 0, onDemandCapCents: 0,
             fetchedAt: now)

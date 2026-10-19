@@ -149,6 +149,8 @@ final class UsageStore: ObservableObject {
     @Published private(set) var lastAttempt: Date?
     @Published private(set) var botSnapshot: GrokBotSnapshot?
     @Published private(set) var botProblem: BotProblem?
+    /// What the Grok Bot ring shows: Grok Bot's own allowance, or its share of the shared Grok pool.
+    @Published private(set) var botRing: BotRingReading?
 
     // Diagnostics (times and short status words only).
     @Published private(set) var grokLastSuccess: Date?
@@ -158,6 +160,11 @@ final class UsageStore: ObservableObject {
     @Published private(set) var nextRetry: Date?
 
     private let client = BillingClient(appVersion: AppInfo.version)
+    /// The pool end last seen as shared with Grok Bot (survives relaunches, so the ring doesn't flash the
+    /// whole pool before the first Grok fetch).
+    private let defaults: UserDefaults?
+    static let sharedEndKey = "pool.sharedWithGrokBotEnd"
+    private var knownSharedEnd: Date?
     private let notifier: UsageNotifier
     private let history: HistoryStore?
     private var settings: () -> GaugeSettings
@@ -181,13 +188,22 @@ final class UsageStore: ObservableObject {
     static let delayAfterWake: TimeInterval = 8
     static let delayAfterNetworkChange: TimeInterval = 4
 
-    init(notifier: UsageNotifier, history: HistoryStore? = nil, settings: @escaping () -> GaugeSettings = { GaugeSettings() }) {
+    init(notifier: UsageNotifier, history: HistoryStore? = nil, defaults: UserDefaults? = nil,
+         settings: @escaping () -> GaugeSettings = { GaugeSettings() }) {
         self.notifier = notifier
         self.history = history
+        self.defaults = defaults
         self.settings = settings
+        if let t = defaults?.object(forKey: Self.sharedEndKey) as? Double { knownSharedEnd = Date(timeIntervalSince1970: t) }
     }
 
     var hasGrokBot: Bool { botProblem != .notInstalled }
+
+    /// Grok Bot is on the shared SuperGrok pool (its ring shows a share of the Grok ring).
+    var botShared: Bool { botRing?.isShared ?? false }
+
+    /// Cursor's share of the Grok pool, when the billing reply lists it.
+    var cursorShare: ProductShare? { snapshot.flatMap(PoolSharing.cursorShare(in:)) }
 
     /// Used by `--render-preview` to draw the popover with a fixed snapshot.
     func showPreview(_ snapshot: UsageSnapshot?, problem: UsageProblem? = nil, bot: GrokBotSnapshot?, botProblem: BotProblem?) {
@@ -198,6 +214,7 @@ final class UsageStore: ObservableObject {
         botSnapshot = bot
         botLastSuccess = bot?.readAt
         self.botProblem = botProblem
+        botRing = bot.map { BotRingReading.make(bot: $0, pool: snapshot, knownSharedEnd: nil) }
     }
 
     func start() {
@@ -284,8 +301,6 @@ final class UsageStore: ObservableObject {
             botSnapshot = s
             botProblem = nil
             botLastSuccess = s.readAt
-            history?.record(.grokBot, percent: s.percent, at: s.readAt)
-            notifier.evaluate(s, thresholds: settings().effectiveNotificationThresholds)
         } catch let e as GrokBotUsageError {
             botSnapshot = nil
             botProblem = BotProblem(e)
@@ -295,6 +310,27 @@ final class UsageStore: ObservableObject {
             botProblem = .unrecognized
             botLastError = (BotProblem.unrecognized.tooltip, Date())
         }
+        updateBotRing()
+    }
+
+    /// Decides what the Grok Bot ring shows (own allowance or share of the shared pool), then records it in
+    /// the history and checks alerts against that same number, so one pool never alerts twice.
+    private func updateBotRing() {
+        guard let bot = botSnapshot else {
+            botRing = nil
+            return
+        }
+        let ring = BotRingReading.make(bot: bot, pool: snapshot, knownSharedEnd: knownSharedEnd,
+                                       poolLoading: snapshot == nil && problem == nil)
+        if ring != botRing { botRing = ring }
+        if ring.isShared, ring.percent != nil, let end = ring.nextReset, end != knownSharedEnd {
+            knownSharedEnd = end
+            defaults?.set(end.timeIntervalSince1970, forKey: Self.sharedEndKey)
+        }
+        guard let p = ring.percent, let rounded = ring.roundedPercent else { return }
+        history?.record(.grokBot, percent: p, at: ring.readAt, shared: ring.isShared)
+        notifier.evaluateBot(rounded: rounded, shared: ring.isShared, periodKey: ring.periodKey, reset: ring.nextReset,
+                             thresholds: settings().effectiveNotificationThresholds)
     }
 
     func refresh() {
@@ -312,11 +348,14 @@ final class UsageStore: ObservableObject {
                 nextRetry = nil
                 grokLastSuccess = s.fetchedAt
                 history?.record(.grok, percent: s.percent, at: s.fetchedAt)
+                if let c = PoolSharing.cursorShare(in: s) { history?.record(.cursor, percent: c.percent, at: s.fetchedAt) }
                 notifier.evaluate(s, thresholds: settings().effectiveNotificationThresholds)
+                updateBotRing()
             } catch {
                 var p = UsageProblem(error)
                 if p == .signedOut, GrokCLISetup.findCLI(shellPATH: shellPATH) == nil { p = .cliNotInstalled }
                 handleFailure(p)
+                updateBotRing()
             }
             isRefreshing = false
         }
