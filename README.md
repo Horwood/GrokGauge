@@ -19,6 +19,28 @@
   <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (42%), both percents (G 42% · B 27%, Grok Bot's share of the pool), percent with days to reset (42% · 2d), the logo alone tinted green, and a red 95%">
 </p>
 
+<p align="center"><b>🌐 <a href="https://stevencombs.github.io/GrokGauge/">Visit the GrokGauge page →</a></b></p>
+
+## Quick install (Homebrew)
+
+```sh
+brew install --cask stevencombs/tap/grokgauge
+```
+
+Already installed? Update to the latest version:
+
+```sh
+brew update && brew upgrade --cask grokgauge
+```
+
+This installs **GrokGauge.app** into `/Applications`. Remove it with `brew uninstall --cask grokgauge`
+(add `--zap` to also delete its preferences). No Homebrew? See [Manual](#manual) install. You'll also want the
+[Grok CLI](#requirements) signed in for the Grok ring.
+
+GrokGauge is ad-hoc signed, not notarized by Apple. So that macOS doesn't block the first launch,
+the cask ([stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap)) removes the
+download quarantine flag from `GrokGauge.app`, and only that app, right after installing it.
+
 > **Unofficial.** GrokGauge is a community project by [retroCombs](https://www.retrocombs.com).
 > It is not made, endorsed, or supported by xAI, or by Anysphere, the maker of the Grok Bot app.
 > "Grok" and "SuperGrok" are trademarks of xAI. GrokGauge reads undocumented data sources that
@@ -160,18 +182,9 @@ Features:
 
 ## Install
 
-### Homebrew (recommended)
+### Homebrew
 
-```sh
-brew install --cask stevencombs/tap/grokgauge
-```
-
-This installs **GrokGauge.app** into `/Applications`. Update it with `brew upgrade --cask grokgauge`.
-Remove it with `brew uninstall --cask grokgauge` (add `--zap` to also delete its preferences).
-
-GrokGauge is ad-hoc signed, not notarized by Apple. So that macOS doesn't block the first launch,
-the cask ([stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap)) removes the
-download quarantine flag from `GrokGauge.app`, and only that app, right after installing it.
+The [quick install](#quick-install-homebrew) at the top of this page is the recommended way.
 
 ### Manual
 
