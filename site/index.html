@@ -28,6 +28,7 @@
   <div class="wrap nav-inner">
     <a class="brand" href="#top"><img src="assets/icon-256.png" alt="" width="32" height="32"><span>GrokGauge</span></a>
     <nav class="nav-links" aria-label="Sections">
+      <a href="#welcome">Welcome tour</a>
       <a href="#features">Features</a>
       <a href="#rings">Rings</a>
       <a href="#how">How it works</a>
@@ -84,6 +85,56 @@
   </div>
 </section>
 
+<!-- WELCOME TOUR -->
+<section id="welcome" class="section alt">
+  <div class="wrap">
+    <header class="sec-head">
+      <p class="kicker">Welcome tour</p>
+      <h2>Get started in seconds.</h2>
+      <p><span class="soon">Coming in the next update</span></p>
+      <p>The first time GrokGauge opens, a friendly 8-step tour shows you around. It checks your Grok sign-in, explains the rings with <em>your</em> color levels, the menu bar, settings and sync, and pace. Skip it anytime, or replay it later from the gear menu's <strong>Show Welcome Tour…</strong></p>
+    </header>
+
+    <div class="grid tour-grid">
+      <figure class="card fig">
+        <div class="shot shot-tour"><picture>
+          <source srcset="assets/tour-welcome-light.png" media="(prefers-color-scheme: light)">
+          <img src="assets/tour-welcome-dark.png" width="500" height="440" loading="lazy" alt="Welcome to GrokGauge: what it is, plus the note that it is unofficial and not affiliated with xAI">
+        </picture></div>
+        <figcaption><strong>1 · Welcome</strong> · what it is, unofficial</figcaption>
+      </figure>
+      <figure class="card fig">
+        <div class="shot shot-tour"><picture>
+          <source srcset="assets/tour-connect-light.png" media="(prefers-color-scheme: light)">
+          <img src="assets/tour-connect-dark.png" width="500" height="440" loading="lazy" alt="Connect to Grok: green checks for the Grok CLI sign-in and Grok Bot">
+        </picture></div>
+        <figcaption><strong>2 · Connect</strong> · checks your Grok sign-in</figcaption>
+      </figure>
+      <figure class="card fig">
+        <div class="shot shot-tour"><picture>
+          <source srcset="assets/tour-rings-light.png" media="(prefers-color-scheme: light)">
+          <img src="assets/tour-rings-dark.png" width="500" height="440" loading="lazy" alt="The rings: what Grok, Grok Bot and Cursor mean, with your own color levels and reset time">
+        </picture></div>
+        <figcaption><strong>3 · The rings</strong> · your colors and levels</figcaption>
+      </figure>
+      <figure class="card fig">
+        <div class="shot shot-tour"><picture>
+          <source srcset="assets/tour-tip-light.png" media="(prefers-color-scheme: light)">
+          <img src="assets/tour-tip-dark.png" width="500" height="440" loading="lazy" alt="Enjoying GrokGauge? An optional Tip on PayPal button and a Maybe later button">
+        </picture></div>
+        <figcaption><strong>8 · Thanks</strong> · an optional tip, never a nag</figcaption>
+      </figure>
+    </div>
+
+    <div class="grid feat-mini tour-mini">
+      <div class="mini"><span class="mi">↩</span><div><h4>Quick to click through</h4><p>Back, Next and Skip on every card, with step dots. <kbd>Return</kbd> goes on, <kbd>Esc</kbd> skips.</p></div></div>
+      <div class="mini"><span class="mi">◐</span><div><h4>Light, dark &amp; VoiceOver</h4><p>Follows your Mac's appearance, and every card reads well with VoiceOver.</p></div></div>
+      <div class="mini"><span class="mi">①</span><div><h4>Once per Mac, no nagging</h4><p>It shows once on each Mac. The last card offers an optional tip, and “Maybe later” means it never asks again.</p></div></div>
+    </div>
+    <p class="fine center">Shown with sample data. Steps 4–7 cover the shared pool, the menu bar, settings &amp; sync, and history &amp; pace.</p>
+  </div>
+</section>
+
 <!-- FEATURES -->
 <section id="features" class="section">
   <div class="wrap">
@@ -137,12 +188,32 @@
     </div>
 
     <div class="grid feat-mini">
-      <div class="mini"><span class="mi">⇄</span><div><h4>History synced across Macs</h4><p>Point GrokGauge at a folder your Macs already sync and every Mac's graph includes the others' readings.</p></div></div>
+      <div class="mini"><span class="mi">⇄</span><div><h4>Synced across Macs</h4><p>Point GrokGauge at a folder your Macs already sync. Your settings and every Mac's readings follow you.</p></div></div>
       <div class="mini"><span class="mi">🔔</span><div><h4>Heads-up alerts</h4><p>A notification when a ring reaches your warning or critical level, once per week each.</p></div></div>
       <div class="mini"><span class="mi">⌨</span><div><h4>Global shortcut</h4><p>Press <kbd>⌃⌥G</kbd> from anywhere to open the dropdown.</p></div></div>
       <div class="mini"><span class="mi">⏻</span><div><h4>Launch at login</h4><p>Set it once and it's there every time your Mac starts.</p></div></div>
       <div class="mini"><span class="mi">›_</span><div><h4>Guided Grok CLI setup</h4><p>No Grok CLI yet? GrokGauge walks you through installing it and running <code>grok login</code>.</p></div></div>
       <div class="mini"><span class="mi">⚙</span><div><h4>Make it yours</h4><p>Reorder or hide sections, pick ring and graph styles, and set your own color levels.</p></div></div>
+    </div>
+
+    <div class="card sync-spot">
+      <div class="sync-copy">
+        <p class="kicker">Sync between Macs</p>
+        <h3>One folder. One status. Done.</h3>
+        <p><span class="soon">Coming in the next update</span></p>
+        <p>Pick one folder your Macs already sync, like Google Drive, iCloud Drive or Dropbox. Your settings and 7-day usage history sync through it, and each has its own switch. One status line tells you it's in sync and which Macs are in, with a single <strong>Sync Now</strong>.</p>
+        <ul class="checks">
+          <li>All your Macs end up in the same folder. GrokGauge finds the one your other Macs use.</li>
+          <li>Readings from every Mac are combined (highest wins), never added.</li>
+          <li>Your Grok login is never synced.</li>
+        </ul>
+      </div>
+      <div class="shot shot-sync">
+        <picture>
+          <source srcset="assets/prefs-sync-light.png" media="(prefers-color-scheme: light)">
+          <img src="assets/prefs-sync-dark.png" width="600" height="512" loading="lazy" alt="The Sync tab: one folder, a status line reading In sync, 3 Macs, synced, one Sync Now button, and switches for Settings and 7-day usage history">
+        </picture>
+      </div>
     </div>
   </div>
 </section>
@@ -285,7 +356,7 @@
     </details>
     <details>
       <summary>I use several Macs. Does it keep up?</summary>
-      <p>Yes. Choose a folder your Macs already sync (Google Drive, Dropbox, iCloud Drive and so on) and GrokGauge syncs your settings and usage history through it. Run <code>grok login</code> on each Mac, because logins are never synced.</p>
+      <p>Yes. Choose a folder your Macs already sync (Google Drive, Dropbox, iCloud Drive and so on) and GrokGauge syncs your settings and usage history through it. Run <code>grok login</code> on each Mac, because logins are never synced. In the next update the Sync tab gets simpler: one folder, one status line and a switch each for settings and history.</p>
     </details>
   </div>
 </section>
@@ -294,7 +365,7 @@
 <section id="support" class="section alt">
   <div class="wrap">
     <div class="support card">
-      <img class="logo" src="assets/retrocombs-logo-160.png" width="96" height="96" alt="retroCombs logo">
+      <img class="logo" src="assets/retrocombs-logo-160.png" srcset="assets/retrocombs-logo-160.png 1x, assets/retrocombs-logo-512.png 3x" width="96" height="96" alt="retroCombs logo">
       <div class="support-copy">
         <h2>Free, and built in the open.</h2>
         <p>GrokGauge was made by Steven “retroCombs” Combs together with Grok Bot. If it saves you a surprise at the weekly limit, you can say thanks with a tip.</p>

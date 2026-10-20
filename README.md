@@ -24,6 +24,10 @@
 > "Grok" and "SuperGrok" are trademarks of xAI. GrokGauge reads undocumented data sources that
 > can change without notice.
 
+> **New in the next update** (after 0.9.4; Homebrew still installs 0.9.4 for now):
+> a friendly [welcome tour](#welcome-tour) the first time GrokGauge opens, and a simpler
+> [one-folder Sync tab](#using-it-on-several-macs).
+
 ## What it does
 
 GrokGauge tracks two weekly limits side by side:
@@ -75,6 +79,8 @@ Features:
 - **Settings window** (gear button or **⌘,**): reorder and hide dropdown sections, menu bar style,
   levels and colors (with a colorblind-friendly preset), notification levels, refresh interval,
   launch at login, settings sync between Macs, diagnostics, and an optional update check.
+- **Welcome tour** *(new in the next update)*. An 8-step tour the first time GrokGauge opens on a Mac,
+  replayable from the gear menu's **Show Welcome Tour…**. See [Welcome tour](#welcome-tour).
 - **Accessible.** VoiceOver labels and values on the rings, bars, charts and buttons; respects
   Reduce Motion and Increase Contrast.
 
@@ -188,11 +194,42 @@ Each release lists the zip's SHA-256 so you can check your download with `shasum
 
 ### First run
 
+*New in the next update:* GrokGauge opens a short **welcome tour** the first time it runs on each Mac.
+It walks you through the steps below. See [Welcome tour](#welcome-tour).
+
 1. Click the gauge in the menu bar (or press **⌃⌥G**) to open the dropdown.
 2. When macOS asks, **allow notifications** so you get the warning and critical alerts.
 3. Click the **gear** (or press **⌘,**) and turn on **Launch at login** under *Colors & Alerts*
    if you want GrokGauge to start with your Mac.
 4. Use **Refresh now** any time; otherwise it updates itself every 15 minutes (adjustable).
+
+## Welcome tour
+
+*New in the next update (not in 0.9.4).* The first time GrokGauge opens on a Mac, a small window walks
+you through it in 8 short cards:
+
+1. **Welcome.** What GrokGauge is, and that it's unofficial and not affiliated with xAI.
+2. **Connect.** Checks for the Grok CLI sign-in on this Mac and shows a green check, or the install and
+   `grok login` steps with copy buttons and **Check Again**.
+3. **The rings.** What each ring means, with *your* color levels (for example 0–80%, 81–90%, above 90%)
+   and when your pool resets.
+4. **The shared pool.** Why the Grok Bot ring can show Grok Bot's share of the Grok pool.
+5. **In your menu bar.** What the menu bar number shows (a live example in your current style) and where
+   to change it.
+6. **Settings & sync.** Colors & Alerts, Layout (including the optional Cursor ring) and the one-folder Sync.
+7. **History & pace.** The 7-day graphs and the "on pace to run out" warning.
+8. **Enjoying GrokGauge?** An optional tip card: **🙏 Tip on PayPal** opens
+   [paypal.me/stevencombs](https://paypal.me/stevencombs), **Maybe later** just closes the tour. No nagging:
+   it never asks again.
+
+Every card has **Back**, **Next** and **Skip**, with step dots. Press **Return** for the next card or
+**Esc** to skip. It follows light and dark mode and works with VoiceOver. It shows once per Mac (a local
+flag that isn't synced). Replay it anytime from the gear menu: **Show Welcome Tour…**.
+
+| | |
+|---|---|
+| <img src="docs/onboarding/tour-01-welcome-light-demo.png" width="400" alt="Welcome tour, step 1: Welcome to GrokGauge"> | <img src="docs/onboarding/tour-03-rings-dark-demo.png" width="400" alt="Welcome tour, step 3: the rings and your color levels"> |
+| <img src="docs/onboarding/tour-05-menu-bar-light-demo.png" width="400" alt="Welcome tour, step 5: the menu bar number"> | <img src="docs/onboarding/tour-08-tip-dark-demo.png" width="400" alt="Welcome tour, step 8: Enjoying GrokGauge? Tip on PayPal or Maybe later"> |
 
 ## Settings
 
@@ -234,8 +271,10 @@ Everything applies immediately.
   (every 6, 12 or 24 hours; the Grok CLI every 2 hours), whether to get one summary notification per check
   (off by default), **Check Now** and **Mark All Read**. The first check marks everything already out as
   read, so you only see a dot for what's new after that. Read marks stay on this Mac; the choices sync.
-- **Sync.** See [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…**
-  save and load the same JSON file.
+- **Sync.** One folder, one status line, one **Sync Now**, and a switch each for **Settings** and
+  **7-day usage history** (the one-folder layout is new in the next update). See
+  [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…** save and load the
+  same JSON file.
 - **Diagnostics.** For Grok and Grok Bot: status, last success, last error (including the server's own
   error message for HTTP errors other than 401/403, with anything token-, email- or id-like removed), and (for Grok) when the
   login expires, plus the app and macOS versions. **Copy Report** puts a plain-text summary on the
@@ -248,32 +287,42 @@ Everything applies immediately.
 
 ## Using it on several Macs
 
-Install GrokGauge and run `grok login` on each Mac (logins are never synced). To keep your
-**settings** the same everywhere, open *Settings › Sync* on each Mac and choose a folder your Macs
-already sync, such as a Google Drive, Insync, Dropbox or iCloud Drive folder.
+Install GrokGauge and run `grok login` on each Mac (logins are never synced). Then open
+*Settings › Sync* on each Mac and choose a folder your Macs already sync, such as a Google Drive, Insync,
+Dropbox or iCloud Drive folder.
 
-- GrokGauge keeps one small file there, `GrokGauge/settings.json`, and watches it. It notices both
-  in-place edits and sync clients that replace the file, and also checks every 30 seconds as a fallback.
-- The newest change wins (by the time it was made). Changes made while a Mac is offline are resolved
-  the same way when it comes back.
-- **Only preferences sync**: layout, menu bar, levels, colors, notification levels, refresh interval,
-  shortcut, and the update-check switch. Never your Grok login or tokens (history has its own files, below).
-- The folder choice itself stays on each Mac, so each one can point at its own path.
+*New in the next update:* the Sync tab is one section, **Sync between Macs**:
 
-**Usage history** (the 7-day graphs) syncs too, through the same folder. If you haven't picked one,
-GrokGauge looks for a `MacSyncing` folder in your cloud-drive folders; you can also choose a folder or
-iCloud Drive under *Settings › Sync › Usage history*, or switch **Sync history across Macs** off.
+<p align="center">
+  <img src="docs/onboarding/prefs-sync-light-demo.png" width="460" alt="The Sync tab: one folder, one status line reading In sync, 3 Macs, synced, one Sync Now button, and switches for Settings and 7-day usage history">
+</p>
 
-- Each Mac writes only its own file, `GrokGauge/history/<machine-id>.json`, and merges everyone's. Usage is
-  account-wide, so matching readings are combined by taking the highest, never added.
-- Conflict copies from Insync or Drive are merged; damaged files are skipped and shown in
-  *Settings › Diagnostics*, along with the folder, the number of Macs and the last sync.
-- If a Mac's settings sync through a different folder than the `MacSyncing` folder found automatically (for
-  example `MacSyncing/xAI`), history is written to and read from **both**, so that Mac still shows up on the
-  others. A folder you choose for history is used on its own.
-- *Settings › Diagnostics › History sync* shows every folder in use, when this Mac's file was last written,
-  and any write error (no permission, folder missing, disk full), which stays listed until a write succeeds.
-- With no folder, history stays on the Mac as before.
+- **One folder** (Change… / Stop Syncing) for everything. GrokGauge keeps `settings.json` and
+  `history/<this Mac>.json` in a `GrokGauge` subfolder there.
+- **One status line** for both, for example "In sync · 3 Macs (Air-M4, MacBook Pro, Studio) · synced 11:38 PM",
+  and one **Sync Now**.
+- **Two switches**, both on by default: **Settings** and **7-day usage history**.
+- If you haven't picked a folder, GrokGauge looks for a `MacSyncing` folder in your cloud-drive folders and
+  uses it. **Stop Syncing** is remembered, so the folder won't be picked up again by itself.
+- **All your Macs end up in the same folder.** GrokGauge checks nearby folders for GrokGauge data (it only
+  reads them). If no other Mac uses this Mac's folder but your other Macs use another one, it moves there by
+  itself, for example from `MacSyncing/xAI` to `MacSyncing`. If other Macs share this folder too, it offers
+  **Switch** instead of moving. Older folders that still hold history are read (never written), so Macs
+  still on 0.9.4 keep showing up. *Settings › Diagnostics › History sync* lists them.
+
+How each part syncs:
+
+- **Settings:** layout, menu bar, levels, colors, notification levels, refresh interval, shortcut, and the
+  update-check switch. Never your Grok login or tokens. GrokGauge watches the file, notices in-place
+  edits and sync clients that replace it, and checks every 30 seconds as a fallback. The newest change
+  wins (by the time it was made), including changes made while a Mac was offline.
+- **History:** each Mac writes only its own file, `GrokGauge/history/<machine-id>.json`, and merges
+  everyone's. Usage is account-wide, so matching readings are combined by taking the highest, never added.
+  Conflict copies from Insync or Drive are merged; damaged files are skipped and shown in
+  *Settings › Diagnostics*, along with the folder, the number of Macs, the last sync and any write error.
+- The folder choice itself stays on each Mac. With no folder, settings and history stay on the Mac.
+
+In 0.9.4 the Sync tab still has separate folder pickers for settings and for usage history.
 
 ## Privacy
 
@@ -312,7 +361,9 @@ iCloud Drive under *Settings › Sync › Usage history*, or switch **Sync histo
 ### Settings, history, and updates
 
 - **Settings sync** writes only `GrokGauge/settings.json` in the folder you choose, containing
-  preferences only (no tokens, emails, ids, usage, or history). Nothing is synced until you pick a folder.
+  preferences only (no tokens, emails, ids, usage, or history). In 0.9.4 nothing syncs until you pick a
+  folder; from the next update, a `MacSyncing` folder found in your cloud-drive folders is used if you
+  haven't picked one (turn it off with **Stop Syncing**).
 - **History** for the graphs is kept in `~/Library/Application Support/GrokGauge/history.json`:
   timestamps and percents only, pruned after 8 days. With history sync on and a sync folder available, a
   copy goes to `GrokGauge/history/<machine-id>.json` in that folder, containing only those percents and
@@ -434,6 +485,7 @@ Want the raw numbers? Run the app binary with a debug flag. None of them print y
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-status  # check the xAI and Cursor status pages once
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-preview ~/Desktop/gg --demo   # dropdown, menu bar and Settings PNGs
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-tour ~/Desktop/gg --demo      # welcome tour cards + Sync tab (next update)
 ```
 
 ## Build from source
@@ -480,7 +532,7 @@ What's next: [ROADMAP.md](ROADMAP.md).
 ## Credits and contact
 
 <p>
-  <img src="Resources/retrocombs-logo.png" width="112" align="left" alt="retroCombs logo: a retro joystick on a circuit board" style="margin-right: 16px">
+  <img src="Resources/retrocombs-logo.png" width="112" align="left" alt="retroCombs logo: a retro joystick on rainbow stripes" style="margin-right: 16px">
 </p>
 
 Created by **Steven Combs** (**retroCombs**) and built together with **Grok Bot**, Steven's AI assistant,

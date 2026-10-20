@@ -40,7 +40,7 @@ if let i = arguments.firstIndex(of: "--render-preview"), i + 1 < arguments.count
     MainActor.assumeIsolated {
         // AppKit drawing needs the real main thread, so run an NSApplication loop
         // (dispatchMain() would service the main queue from a worker thread).
-        let app = NSApplication.shared
+        let app = PreviewApplication.shared   // reports itself active, so switches draw in accent colors
         app.setActivationPolicy(.prohibited)
         Task { @MainActor in
             let code = await PreviewRenderer.render(to: dir, demo: demo)
@@ -55,7 +55,7 @@ if let i = arguments.firstIndex(of: "--render-tour"), i + 1 < arguments.count {
     let dir = URL(fileURLWithPath: (arguments[i + 1] as NSString).expandingTildeInPath)
     let demo = arguments.contains("--demo")
     MainActor.assumeIsolated {
-        let app = NSApplication.shared
+        let app = PreviewApplication.shared   // reports itself active, so switches draw in accent colors
         app.setActivationPolicy(.prohibited)
         Task { @MainActor in
             let code = await PreviewRenderer.renderTour(to: dir, demo: demo)

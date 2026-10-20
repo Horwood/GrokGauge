@@ -130,8 +130,7 @@ enum PreviewRenderer {
             prefsSettings = SettingsStore.preview()
         }
         let updates = demo
-            ? UpdateMonitor.preview(available: ReleaseInfo(tag: "v0.9.2", url: URL(string: "https://github.com/stevencombs/GrokGauge/releases/tag/v0.9.2")!),
-                                    lastChecked: Date().addingTimeInterval(-3 * 3600))
+            ? UpdateMonitor.preview(available: nil, lastChecked: Date().addingTimeInterval(-3 * 3600))
             : UpdateMonitor.preview(available: nil, lastChecked: Date())
         let expiry = demo ? Date().addingTimeInterval(5.5 * 3600) : store.grokTokenExpiry()
         // History sync as it looks with three Macs (one Insync conflict copy merged, one partial file skipped).
@@ -259,16 +258,19 @@ enum PreviewRenderer {
         let root = view
             .background(background ? (scheme == .dark ? Color(white: 0.15) : Color(white: 0.965)) : .clear)
             .environment(\.colorScheme, scheme)
+            // Draw controls as in the frontmost window (accent-colored default buttons and switches), not greyed out.
+            .environment(\.controlActiveState, .key)
         let host = NSHostingView(rootView: root)
         host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         host.setFrameSize(host.fittingSize)
 
         // A real (but off-screen) window so AppKit-backed controls draw normally.
-        let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: host.fittingSize),
-                              styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = PreviewWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: host.fittingSize),
+                                   styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = host.appearance
         window.contentView = host
         window.orderFrontRegardless()
+        window.makeKey()
         RunLoop.main.run(until: Date().addingTimeInterval(0.6))
         host.setFrameSize(host.fittingSize)
         window.setContentSize(host.fittingSize)
@@ -276,10 +278,27 @@ enum PreviewRenderer {
         host.layoutSubtreeIfNeeded()
         host.display()
 
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return false }
+        // Always 2x pixels, so shots look the same from a Retina or a non-Retina Mac.
+        let scale: CGFloat = 2
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil,
+                                         pixelsWide: Int((host.bounds.width * scale).rounded()),
+                                         pixelsHigh: Int((host.bounds.height * scale).rounded()),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
+        else { return false }
+        rep.size = host.bounds.size
         host.cacheDisplay(in: host.bounds, to: rep)
         window.orderOut(nil)
         return write(rep, to: url)
+    }
+
+    /// Off-screen window that reports itself as key and main, so AppKit-backed controls (buttons, switches)
+    /// render in their active colors instead of the greyed inactive-window look.
+    private final class PreviewWindow: NSWindow {
+        override var canBecomeKey: Bool { true }
+        override var canBecomeMain: Bool { true }
+        override var isKeyWindow: Bool { true }
+        override var isMainWindow: Bool { true }
     }
 
     struct MenuBarItem {
@@ -341,4 +360,10 @@ enum PreviewRenderer {
         do { try data.write(to: url) } catch { return false }
         return true
     }
+}
+
+/// Used only by --render-preview / --render-tour (never by the menu bar app): an application that reports itself
+/// active without activating, so AppKit switches draw "on" in the accent color instead of the inactive grey.
+final class PreviewApplication: NSApplication {
+    override var isActive: Bool { true }
 }
