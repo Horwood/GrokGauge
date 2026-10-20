@@ -16,6 +16,10 @@ promised date.
 
 ## Recently shipped
 
+**0.9.5:** a welcome tour the first time GrokGauge opens (replay it from the gear menu), a simpler Sync tab
+with one folder that every Mac ends up sharing, the new retroCombs logo, the menu bar's B always showing Grok
+Bot's share of the shared pool, and macOS 27 cleanup.
+
 **0.9.4:** the gear menu opens on the first click and stays open, and a click outside the dropdown closes it
 again (GrokGauge now becomes the active app as the dropdown opens).
 

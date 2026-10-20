@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (86%), both percents (G 42% · B 86%), percent with days to reset (86% · 3d), the logo alone tinted orange, and a red 95%">
+  <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (42%), both percents (G 42% · B 27%, Grok Bot's share of the pool), percent with days to reset (42% · 2d), the logo alone tinted green, and a red 95%">
 </p>
 
 > **Unofficial.** GrokGauge is a community project by [retroCombs](https://www.retrocombs.com).
@@ -24,9 +24,9 @@
 > "Grok" and "SuperGrok" are trademarks of xAI. GrokGauge reads undocumented data sources that
 > can change without notice.
 
-> **New in the next update** (after 0.9.4; Homebrew still installs 0.9.4 for now):
-> a friendly [welcome tour](#welcome-tour) the first time GrokGauge opens, and a simpler
-> [one-folder Sync tab](#using-it-on-several-macs).
+> **New in 0.9.5:** a friendly [welcome tour](#welcome-tour) the first time GrokGauge opens, a simpler
+> [one-folder Sync tab](#using-it-on-several-macs), and the menu bar's **B** always shows Grok Bot's share of
+> the shared pool (the same number as its ring). See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -45,7 +45,7 @@ Features:
 
 - **Menu bar meter.** A small Grok-style glyph plus a percent, color-coded **green** up to 80%,
   **orange** from 81–90%, and **red** above 90% (levels and colors are yours to change). Show the
-  **higher** of the two numbers, **both** (`G 42% · B 86%`), just one source, or only the logo tinted
+  **higher** of the two numbers, **both** (`G 42% · B 27%`), just one source, or only the logo tinted
   by status. Optionally add the days to reset (`10% · 5d`) or hide the logo.
 - **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
   An optional third **Cursor ring** (off by default) shows the "Cursor" share of your Grok pool when xAI's
@@ -79,7 +79,7 @@ Features:
 - **Settings window** (gear button or **⌘,**): reorder and hide dropdown sections, menu bar style,
   levels and colors (with a colorblind-friendly preset), notification levels, refresh interval,
   launch at login, settings sync between Macs, diagnostics, and an optional update check.
-- **Welcome tour** *(new in the next update)*. An 8-step tour the first time GrokGauge opens on a Mac,
+- **Welcome tour** *(new in 0.9.5)*. An 8-step tour the first time GrokGauge opens on a Mac,
   replayable from the gear menu's **Show Welcome Tour…**. See [Welcome tour](#welcome-tour).
 - **Accessible.** VoiceOver labels and values on the rings, bars, charts and buttons; respects
   Reduce Motion and Increase Contrast.
@@ -89,7 +89,7 @@ Features:
   &nbsp;&nbsp;
   <img src="docs/popover-light-demo.png" width="300" alt="GrokGauge dropdown, light mode">
 </p>
-<p align="center"><sub>Screenshots use sample data (Grok 42%, Grok Bot 86%).</sub></p>
+<p align="center"><sub>Screenshots use sample data (Grok pool 42%, Grok Bot's share 27%).</sub></p>
 
 <p align="center">
   <img src="docs/popover-stacked-colorblind-dark-demo.png" width="250" alt="Stacked rings with the colorblind-friendly palette">
@@ -120,7 +120,7 @@ Features:
 <p align="center"><sub>The service status row during an incident (example data; normally both dots are green).</sub></p>
 
 <p align="center">
-  <img src="docs/popover-three-rings-keepSize-dark-demo.png" width="360" alt="Three rings side by side: Grok 42%, Grok Bot 86% and the optional Cursor ring at 3%, captioned share of Grok pool">
+  <img src="docs/popover-three-rings-keepSize-dark-demo.png" width="360" alt="Three rings side by side: Grok 42%, Grok Bot 27% and the optional Cursor ring at 1%, captioned share of Grok pool">
 </p>
 <p align="center"><sub>The optional Cursor ring (sample data), with "Keep ring size" on.</sub></p>
 
@@ -194,7 +194,7 @@ Each release lists the zip's SHA-256 so you can check your download with `shasum
 
 ### First run
 
-*New in the next update:* GrokGauge opens a short **welcome tour** the first time it runs on each Mac.
+*New in 0.9.5:* GrokGauge opens a short **welcome tour** the first time it runs on each Mac.
 It walks you through the steps below. See [Welcome tour](#welcome-tour).
 
 1. Click the gauge in the menu bar (or press **⌃⌥G**) to open the dropdown.
@@ -205,7 +205,7 @@ It walks you through the steps below. See [Welcome tour](#welcome-tour).
 
 ## Welcome tour
 
-*New in the next update (not in 0.9.4).* The first time GrokGauge opens on a Mac, a small window walks
+*New in 0.9.5.* The first time GrokGauge opens on a Mac, a small window walks
 you through it in 8 short cards:
 
 1. **Welcome.** What GrokGauge is, and that it's unofficial and not affiliated with xAI.
@@ -272,7 +272,7 @@ Everything applies immediately.
   (off by default), **Check Now** and **Mark All Read**. The first check marks everything already out as
   read, so you only see a dot for what's new after that. Read marks stay on this Mac; the choices sync.
 - **Sync.** One folder, one status line, one **Sync Now**, and a switch each for **Settings** and
-  **7-day usage history** (the one-folder layout is new in the next update). See
+  **7-day usage history** (the one-folder layout is new in 0.9.5). See
   [Using it on several Macs](#using-it-on-several-macs). **Export…** and **Import…** save and load the
   same JSON file.
 - **Diagnostics.** For Grok and Grok Bot: status, last success, last error (including the server's own
@@ -291,7 +291,7 @@ Install GrokGauge and run `grok login` on each Mac (logins are never synced). Th
 *Settings › Sync* on each Mac and choose a folder your Macs already sync, such as a Google Drive, Insync,
 Dropbox or iCloud Drive folder.
 
-*New in the next update:* the Sync tab is one section, **Sync between Macs**:
+Since 0.9.5 the Sync tab is one section, **Sync between Macs**:
 
 <p align="center">
   <img src="docs/onboarding/prefs-sync-light-demo.png" width="460" alt="The Sync tab: one folder, one status line reading In sync, 3 Macs, synced, one Sync Now button, and switches for Settings and 7-day usage history">
@@ -308,7 +308,7 @@ Dropbox or iCloud Drive folder.
   reads them). If no other Mac uses this Mac's folder but your other Macs use another one, it moves there by
   itself, for example from `MacSyncing/xAI` to `MacSyncing`. If other Macs share this folder too, it offers
   **Switch** instead of moving. Older folders that still hold history are read (never written), so Macs
-  still on 0.9.4 keep showing up. *Settings › Diagnostics › History sync* lists them.
+  still on 0.9.4 or earlier keep showing up. *Settings › Diagnostics › History sync* lists them.
 
 How each part syncs:
 
@@ -322,7 +322,7 @@ How each part syncs:
   *Settings › Diagnostics*, along with the folder, the number of Macs, the last sync and any write error.
 - The folder choice itself stays on each Mac. With no folder, settings and history stay on the Mac.
 
-In 0.9.4 the Sync tab still has separate folder pickers for settings and for usage history.
+0.9.4 and earlier had separate folder pickers for settings and for usage history; 0.9.5 moves them to the one folder.
 
 ## Privacy
 
@@ -361,9 +361,9 @@ In 0.9.4 the Sync tab still has separate folder pickers for settings and for usa
 ### Settings, history, and updates
 
 - **Settings sync** writes only `GrokGauge/settings.json` in the folder you choose, containing
-  preferences only (no tokens, emails, ids, usage, or history). In 0.9.4 nothing syncs until you pick a
-  folder; from the next update, a `MacSyncing` folder found in your cloud-drive folders is used if you
-  haven't picked one (turn it off with **Stop Syncing**).
+  preferences only (no tokens, emails, ids, usage, or history). If you haven't picked a
+  folder, a `MacSyncing` folder found in your cloud-drive folders is used (since 0.9.5; turn it off with
+  **Stop Syncing**). In 0.9.4 and earlier nothing synced until you picked a folder.
 - **History** for the graphs is kept in `~/Library/Application Support/GrokGauge/history.json`:
   timestamps and percents only, pruned after 8 days. With history sync on and a sync folder available, a
   copy goes to `GrokGauge/history/<machine-id>.json` in that folder, containing only those percents and
@@ -485,7 +485,7 @@ Want the raw numbers? Run the app binary with a debug flag. None of them print y
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --refresh-now   # renew the login now; prints expiry times
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --print-status  # check the xAI and Cursor status pages once
 /Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-preview ~/Desktop/gg --demo   # dropdown, menu bar and Settings PNGs
-/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-tour ~/Desktop/gg --demo      # welcome tour cards + Sync tab (next update)
+/Applications/GrokGauge.app/Contents/MacOS/GrokGauge --render-tour ~/Desktop/gg --demo      # welcome tour cards + Sync tab
 ```
 
 ## Build from source

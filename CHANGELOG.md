@@ -5,6 +5,37 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-10-20
+
+### Added
+- **A welcome tour.** The first time GrokGauge opens on a Mac, a short 8-card tour walks through connecting to
+  Grok, the rings and their color levels (with your own thresholds), the shared pool, the menu bar, Settings and
+  Sync, and history and pace, and ends with an optional tip. Back, Next and Skip are on every card, Return goes
+  on and Esc skips, and it follows light and dark mode and VoiceOver. It shows once per Mac; replay it any time
+  from the gear menu's **Show Welcome Tour…**.
+
+### Changed
+- **A simpler Sync tab, with every Mac on one folder.** Settings › Sync now has a single folder for both
+  settings and 7-day usage history, a status line (in sync, which Macs, last sync) with **Sync Now**, and a
+  switch each for settings and history. GrokGauge looks at the folders it already knows about (the current
+  one, the auto-found `MacSyncing` folder, an older history-only folder, and their GrokGauge subfolders) and
+  moves this Mac to the folder your other Macs use: automatically when no other Mac shares the current one,
+  otherwise as a suggestion. Older folders that still hold history are read, never written, so Macs still on
+  an older version keep showing up. Settings › Diagnostics lists any other folders found.
+- **New official retroCombs logo** in Settings › About, the README and the website (with a high-resolution
+  copy for sharp screens).
+
+### Fixed
+- **The menu bar's B number is Grok Bot's share of the shared pool, the same number as its ring.** When Grok
+  Bot is on the shared SuperGrok pool, its own reading is the whole pool. In a week already seen as shared, B
+  (and the ring) could still fall back to that whole-pool reading: after the Grok login expired or you signed
+  out, or when Grok Bot's cached reading and the latest Grok fetch were more than a few points apart. In a
+  shared week GrokGauge now always shows Grok Bot's share, or "–" while the share isn't known, never the pool.
+- **macOS 27 cleanup.** Builds without warnings from our code on macOS 27 and Swift 6.3: activation asks with
+  the macOS 14+ API first (keeping 0.9.4's first-click gear and click-away behavior), a test lock is
+  async-safe, and the build scripts use the toolchain's default build system (SwiftPM deprecated
+  `--build-system native`; `SWIFT_BUILD_SYSTEM` still forces one).
+
 ## [0.9.4] - 2026-10-19
 
 ### Fixed
@@ -219,6 +250,7 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
+[0.9.5]: https://github.com/stevencombs/GrokGauge/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/stevencombs/GrokGauge/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/stevencombs/GrokGauge/compare/v0.9.2...v0.9.3
 [0.9.0]: https://github.com/stevencombs/GrokGauge/compare/v0.3.0...v0.9.0
