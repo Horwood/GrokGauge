@@ -44,6 +44,7 @@ struct PopoverView: View {
     @ObservedObject var sizing: PopoverSizing
     @ObservedObject var status: ServiceStatusStore = .preview([:])
     var openPreferences: () -> Void = {}
+    var showTour: () -> Void = {}
 
     private var settings: GaugeSettings { settingsStore.settings }
 
@@ -246,7 +247,7 @@ struct PopoverView: View {
             // Same pattern as ClipGauge: the gear opens a small menu with Settings… and Quit.
             // An AppKit button (not a SwiftUI Menu) so the very first click opens it, even while the
             // dropdown is still becoming the key window.
-            GearMenuButton(openSettings: openPreferences)
+            GearMenuButton(openSettings: openPreferences, showTour: showTour)
                 .frame(width: 18, height: 20)
                 .help("Settings (⌘,) and Quit")
         }
@@ -1280,7 +1281,7 @@ private struct UpdateBanner: View {
 
 // MARK: - Gear menu
 
-/// The header's gear: one click opens a small menu with Settings… and Quit GrokGauge.
+/// The header's gear: one click opens a small menu with Settings…, Show Welcome Tour… and Quit GrokGauge.
 ///
 /// The menu is popped up by AppKit (`NSMenu.popUp`), not a SwiftUI `Menu`. If GrokGauge isn't yet the active
 /// app (or the dropdown isn't key) when the gear is clicked, the button activates first and pops the menu only
@@ -1288,8 +1289,9 @@ private struct UpdateBanner: View {
 /// 0.9.3's first click showed the menu for a moment and closed it.
 struct GearMenuButton: NSViewRepresentable {
     var openSettings: () -> Void
+    var showTour: () -> Void = {}
 
-    func makeCoordinator() -> Coordinator { Coordinator(openSettings: openSettings) }
+    func makeCoordinator() -> Coordinator { Coordinator(openSettings: openSettings, showTour: showTour) }
 
     func makeNSView(context: Context) -> FirstClickMenuButton {
         let b = FirstClickMenuButton()
@@ -1311,12 +1313,17 @@ struct GearMenuButton: NSViewRepresentable {
 
     func updateNSView(_ nsView: FirstClickMenuButton, context: Context) {
         context.coordinator.openSettings = openSettings
+        context.coordinator.showTour = showTour
     }
 
     @MainActor
     final class Coordinator: NSObject {
         var openSettings: () -> Void
-        init(openSettings: @escaping () -> Void) { self.openSettings = openSettings }
+        var showTour: () -> Void
+        init(openSettings: @escaping () -> Void, showTour: @escaping () -> Void) {
+            self.openSettings = openSettings
+            self.showTour = showTour
+        }
 
         func makeMenu() -> NSMenu {
             let menu = NSMenu()
@@ -1325,6 +1332,9 @@ struct GearMenuButton: NSViewRepresentable {
             settings.keyEquivalentModifierMask = .command
             settings.target = self
             menu.addItem(settings)
+            let tour = NSMenuItem(title: "Show Welcome Tour…", action: #selector(tourChosen(_:)), keyEquivalent: "")
+            tour.target = self
+            menu.addItem(tour)
             menu.addItem(.separator())
             let quit = NSMenuItem(title: "Quit GrokGauge", action: #selector(quitChosen(_:)), keyEquivalent: "q")
             quit.keyEquivalentModifierMask = .command
@@ -1336,6 +1346,10 @@ struct GearMenuButton: NSViewRepresentable {
         @objc func settingsChosen(_ sender: Any?) {
             // Let the menu finish closing before the popover closes and Settings opens.
             DispatchQueue.main.async { [openSettings] in openSettings() }
+        }
+
+        @objc func tourChosen(_ sender: Any?) {
+            DispatchQueue.main.async { [showTour] in showTour() }
         }
 
         @objc func quitChosen(_ sender: Any?) { NSApp.terminate(nil) }

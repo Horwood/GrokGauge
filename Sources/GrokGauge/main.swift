@@ -50,6 +50,21 @@ if let i = arguments.firstIndex(of: "--render-preview"), i + 1 < arguments.count
     }
 }
 
+if let i = arguments.firstIndex(of: "--render-tour"), i + 1 < arguments.count {
+    // Developer aid: renders each welcome-tour card (light + dark) and the Sync tab to PNGs. Add --demo for sample data.
+    let dir = URL(fileURLWithPath: (arguments[i + 1] as NSString).expandingTildeInPath)
+    let demo = arguments.contains("--demo")
+    MainActor.assumeIsolated {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.prohibited)
+        Task { @MainActor in
+            let code = await PreviewRenderer.renderTour(to: dir, demo: demo)
+            exit(code)
+        }
+        app.run()
+    }
+}
+
 if arguments.contains("--help") || arguments.contains("-h") {
     print("""
     GrokGauge \(AppInfo.version) — SuperGrok and Grok Bot usage in your menu bar
@@ -61,6 +76,7 @@ if arguments.contains("--help") || arguments.contains("-h") {
       GrokGauge --print-status  Check the public xAI and Cursor status pages once
       GrokGauge --refresh-now   Renew the Grok login now (prints expiry times only)
       GrokGauge --render-preview DIR [--demo]   Write dropdown, menu bar and Settings PNGs (for docs)
+      GrokGauge --render-tour DIR [--demo]      Write the welcome tour cards and Sync tab PNGs (for docs)
       GrokGauge --version
     """)
     exit(0)

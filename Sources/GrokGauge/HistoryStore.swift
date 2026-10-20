@@ -25,8 +25,8 @@ final class HistoryStore: ObservableObject {
         var skipped: [HistorySyncSkip] = []
         var conflictCopies: [String] = []
         var lastError: String?
-        /// Every folder in use (the primary first). Two when the settings-sync folder and the auto-detected
-        /// MacSyncing folder differ: history is written to and read from both.
+        /// Every folder read (the primary first). Only the primary is written; the rest are older folders that
+        /// still hold history (e.g. "MacSyncing/xAI" from before 0.9.5), so Macs on older versions merge in.
         var folders: [URL] = []
         /// When this Mac's file was last written successfully, and the last write failure (kept until a
         /// write succeeds, so a read-only refresh can't hide it).
@@ -35,6 +35,8 @@ final class HistoryStore: ObservableObject {
         var writeErrorAt: Date?
         /// Saving `history.json` in Application Support failed.
         var localSaveError: String?
+        /// `folders` minus the primary: read, never written.
+        var readOnlyFolders: [URL] = []
 
         var isActive: Bool { enabled && folder != nil }
     }
@@ -51,8 +53,8 @@ final class HistoryStore: ObservableObject {
     let machineID: String
     let machineName: String
     private var chosenFolder: URL?
-    private var settingsFolder: URL?
-    private var detectedFolder: URL?
+    private var primaryFolder: URL?
+    private var readOnlyFolders: [URL] = []
     private var pendingSave: DispatchWorkItem?
     private var pendingSync: DispatchWorkItem?
     private var watcher: FolderWatcher?
@@ -123,11 +125,11 @@ final class HistoryStore: ObservableObject {
 
     // MARK: Sync configuration
 
-    /// The settings-sync folder and the auto-detected folder changed (from SettingsStore).
-    func updateFolders(settingsSync: URL?, detected: URL?) {
-        guard settingsSync != settingsFolder || detected != detectedFolder else { return }
-        settingsFolder = settingsSync
-        detectedFolder = detected
+    /// The one sync folder (written and read) and any older folders that still hold history (read only).
+    func updateFolders(primary: URL?, readOnly: [URL]) {
+        guard primary != primaryFolder || readOnly != readOnlyFolders else { return }
+        primaryFolder = primary
+        readOnlyFolders = readOnly
         reconfigure()
     }
 
@@ -138,64 +140,29 @@ final class HistoryStore: ObservableObject {
         reconfigure()
     }
 
-    /// nil goes back to the settings-sync / auto-detected folder.
-    func setChosenFolder(_ folder: URL?) {
-        chosenFolder = folder
-        if let folder { defaults?.set(folder.path, forKey: Self.folderKey) } else { defaults?.removeObject(forKey: Self.folderKey) }
-        reconfigure()
-    }
-
-    var hasChosenFolder: Bool { chosenFolder != nil }
-
-    func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Use Folder"
-        panel.message = "Choose a folder all your Macs sync (Google Drive, Insync, iCloud Drive, Dropbox…). "
-            + "Each Mac keeps one small file in GrokGauge/history."
-        panel.directoryURL = sync.folder ?? FileManager.default.homeDirectoryForCurrentUser
-        NSApp.activate()
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        setChosenFolder(url)
-    }
-
-    /// iCloud Drive's root (`~/Library/Mobile Documents/com~apple~CloudDocs`), when it's turned on.
-    nonisolated static var iCloudDrive: URL? {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    func useICloudDrive() {
-        guard let icloud = Self.iCloudDrive else {
-            let a = NSAlert()
-            a.messageText = "iCloud Drive isn't turned on"
-            a.informativeText = "Turn on iCloud Drive in System Settings › Apple Account › iCloud, or choose another folder."
-            a.runModal()
-            return
-        }
-        setChosenFolder(icloud)
-    }
+    /// A history-only folder picked in 0.9.2–0.9.4 (Settings › Sync › Usage history). It's no longer offered,
+    /// but its files are still read so nothing in it is lost.
+    var legacyChosenFolder: URL? { chosenFolder }
 
     private func reconfigure() {
         watcher?.stop()
         watcher = nil
         pendingSync?.cancel()
         generation += 1
-        let all = HistorySyncFolder.candidates(chosen: chosenFolder, settingsSync: settingsFolder, detected: detectedFolder)
-        sync.folder = all.first?.url
-        sync.origin = all.first?.origin
-        sync.folders = all.map(\.url)
-        sync.ownFile = all.first.map { HistorySync.fileURL(inSyncFolder: $0.url, machineID: machineID) }
+        sync.folder = primaryFolder
+        sync.origin = primaryFolder == nil ? nil : .settingsSync
+        var all: [URL] = primaryFolder.map { [$0] } ?? []
+        for f in readOnlyFolders where !all.contains(where: { SyncFolderPlan.same($0, f) }) { all.append(f) }
+        sync.folders = all
+        sync.readOnlyFolders = Array(all.dropFirst())
+        sync.ownFile = primaryFolder.map { HistorySync.fileURL(inSyncFolder: $0, machineID: machineID) }
         sync.writeError = nil
         sync.writeErrorAt = nil
         watchers.forEach { $0.stop() }
         watchers = []
         if !sync.isActive {
             sync.folders = []
+            sync.readOnlyFolders = []
             others = []
             sync.machineCount = 0
             sync.machineNames = []
@@ -234,13 +201,12 @@ final class HistoryStore: ObservableObject {
         let id = machineID
         Task.detached(priority: .utility) {
             var writeErrors: [String] = []
-            if write {
-                for folder in folders {
-                    do {
-                        try HistorySync.write(payload, to: HistorySync.fileURL(inSyncFolder: folder, machineID: id))
-                    } catch {
-                        writeErrors.append(folders.count > 1 ? "\(Self.describe(error)) (\(folder.lastPathComponent))" : Self.describe(error))
-                    }
+            // Only the one sync folder is written; older folders are read so their Macs still merge in.
+            if write, let folder = folders.first {
+                do {
+                    try HistorySync.write(payload, to: HistorySync.fileURL(inSyncFolder: folder, machineID: id))
+                } catch {
+                    writeErrors.append(Self.describe(error))
                 }
             }
             var read = HistorySyncRead()

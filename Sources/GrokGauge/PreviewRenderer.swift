@@ -255,7 +255,7 @@ enum PreviewRenderer {
         }
     }
 
-    private static func renderView<V: View>(_ view: V, scheme: ColorScheme, background: Bool, to url: URL) -> Bool {
+    static func renderView<V: View>(_ view: V, scheme: ColorScheme, background: Bool, to url: URL) -> Bool {
         let root = view
             .background(background ? (scheme == .dark ? Color(white: 0.15) : Color(white: 0.965)) : .clear)
             .environment(\.colorScheme, scheme)

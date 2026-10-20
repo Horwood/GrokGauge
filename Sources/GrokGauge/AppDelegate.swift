@@ -40,9 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.setAccessibilityLabel("GrokGauge")
         }
 
-        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew, sizing: sizing, status: serviceStatus) { [weak self] in
-            self?.openPreferences()
-        }
+        let root = PopoverView(store: store, settingsStore: settingsStore, history: history, updates: updates, whatsNew: whatsNew, sizing: sizing, status: serviceStatus,
+                               openPreferences: { [weak self] in self?.openPreferences() },
+                               showTour: { [weak self] in self?.showWelcomeTour() })
         let host = NSHostingController(rootView: root)
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
@@ -77,13 +77,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         HotKeyCenter.shared.action = { [weak self] in self?.togglePopover(nil) }
 
-        // History sync follows the settings-sync folder, or a MacSyncing folder found automatically.
-        Publishers.CombineLatest(settingsStore.$syncFolder, settingsStore.$suggestedFolder)
+        // One sync folder for settings and history; older folders that still hold history are read too.
+        Publishers.CombineLatest(settingsStore.$syncFolder, settingsStore.$readOnlyFolders)
             .receive(on: RunLoop.main)
-            .sink { [weak self] syncFolder, suggested in
-                self?.history.updateFolders(settingsSync: syncFolder, detected: suggested)
+            .sink { [weak self] folder, readOnly in
+                self?.history.updateFolders(primary: folder, readOnly: readOnly)
             }
             .store(in: &cancellables)
+        settingsStore.configureSurvey(machineID: history.machineID, legacy: [history.legacyChosenFolder].compactMap { $0 })
 
         notifier.requestAuthorization()
         settingsStore.start()
@@ -93,6 +94,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         store.start()
         whatsNew.start()
         serviceStatus.start()
+
+        // First launch on this Mac: the welcome tour, once (a local flag, not part of the synced settings).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            self?.onboarding.showIfNeeded()
+        }
+    }
+
+    private lazy var onboarding = OnboardingWindowController { [unowned self] close in
+        OnboardingView(store: store, settingsStore: settingsStore,
+                       cliState: { [weak self] in self?.store.cliState() ?? .signedIn },
+                       close: close)
+    }
+
+    /// Gear menu › Show Welcome Tour…
+    func showWelcomeTour() {
+        if popover.isShown { popover.performClose(nil) }
+        onboarding.show()
     }
 
     /// Applies settings that drive non-SwiftUI parts: timers, the shortcut, the update check.

@@ -71,7 +71,8 @@ struct PreferencesView: View {
             case .colors: colorsTab
             case .whatsNew: WhatsNewPrefs(settings: settings, store: whatsNew)
             case .sync: syncTab
-            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, history: history, status: status, settings: settingsStore.settings, tokenExpiry: tokenExpiry)
+            case .diagnostics: DiagnosticsTab(store: store, whatsNew: whatsNew, history: history, status: status, settings: settingsStore.settings, tokenExpiry: tokenExpiry,
+                                              migratedFrom: settingsStore.migratedFrom)
             case .about: aboutTab
             }
         }
@@ -347,30 +348,55 @@ struct PreferencesView: View {
 
     // MARK: Sync
 
+    /// One folder for everything: settings and the 7-day history each have a switch, one status line and one
+    /// Sync Now. Older folders that still hold history are read quietly (listed on the Diagnostics tab).
     private var syncTab: some View {
-        Group {
-            PrefGroup(title: "Sync settings between Macs",
-                      footer: "GrokGauge keeps one small file, **GrokGauge/settings.json**, in this folder and watches it for changes. The newest change wins. Only preferences go in it — never your Grok login. Usage history syncs separately (below). The folder choice stays on this Mac.") {
-                PrefRow(label: "Folder", detail: settingsStore.syncFolder.map(Self.abbreviate) ?? "Not syncing") {
-                    Button(settingsStore.syncFolder == nil ? "Choose…" : "Change…") { settingsStore.chooseSyncFolder() }
-                    if settingsStore.syncFolder != nil {
+        let folder = settingsStore.syncFolder
+        return Group {
+            PrefGroup(title: "Sync between Macs",
+                      footer: "GrokGauge keeps **settings.json** and **history/<this Mac>.json** in a **GrokGauge** subfolder of this folder. Only preferences and usage percentages go there, never your Grok login. Every Mac's readings are combined (highest wins), not added. The folder choice stays on this Mac.") {
+                PrefRow(label: "Folder", detail: folder.map(Self.abbreviate) ?? "Not syncing. Settings and history stay on this Mac.") {
+                    Button(folder == nil ? "Choose…" : "Change…") { settingsStore.chooseSyncFolder() }
+                    if folder != nil {
                         Button("Stop Syncing") { settingsStore.setSyncFolder(nil) }
                     }
                 }
-                if settingsStore.syncFolder == nil, let hint = settingsStore.suggestedFolder {
+                if folder == nil, let hint = settingsStore.suggestedFolder {
                     Divider()
                     PrefRow(label: "Found a sync folder", detail: Self.abbreviate(hint)) {
                         Button("Use It") { settingsStore.setSyncFolder(hint) }
                     }
                 }
-                if settingsStore.syncFolder != nil {
+                if let s = settingsStore.folderSuggestion {
                     Divider()
-                    PrefRow(label: "Status", detail: syncStatusText) {
-                        Button("Sync Now") { settingsStore.reconcile() }
+                    PrefRow(label: "Your other Macs use another folder",
+                            detail: "\(Self.abbreviate(s.url)) · \(s.otherMacs == 1 ? "1 other Mac" : "\(s.otherMacs) other Macs")") {
+                        Button("Switch") { settingsStore.setSyncFolder(s.url) }
                     }
                 }
+                if folder != nil {
+                    Divider()
+                    PrefRow(label: "Status", detail: syncStatusLine) {
+                        Button("Sync Now") {
+                            settingsStore.reconcile()
+                            history.syncNow()
+                        }
+                        .disabled(!settingsStore.settingsSyncEnabled && !history.sync.enabled)
+                    }
+                }
+                Divider()
+                PrefRow(label: "Settings", detail: "Layout, menu bar, colors, alerts and the shortcut. The newest change wins.") {
+                    Toggle("Settings", isOn: Binding(get: { settingsStore.settingsSyncEnabled }, set: { settingsStore.setSettingsSyncEnabled($0) }))
+                        .toggleStyle(.switch).labelsHidden()
+                        .accessibilityLabel("Sync settings")
+                }
+                Divider()
+                PrefRow(label: "7-day usage history", detail: "Each Mac's readings, merged into the history graphs.") {
+                    Toggle("7-day usage history", isOn: Binding(get: { history.sync.enabled }, set: { history.setEnabled($0) }))
+                        .toggleStyle(.switch).labelsHidden()
+                        .accessibilityLabel("Sync 7-day usage history")
+                }
             }
-            historySyncGroup
             PrefGroup(title: "Back up or move settings", footer: "Exports the same JSON that sync uses. Importing counts as a change on this Mac.") {
                 PrefRow(label: "Settings file") {
                     Button("Export…") { settingsStore.exportSettings() }
@@ -392,52 +418,21 @@ struct PreferencesView: View {
         .onAppear { settingsStore.findSuggestedFolder() }
     }
 
-    private var historySyncGroup: some View {
-        let s = history.sync
-        return PrefGroup(title: "Usage history",
-                         footer: "Each Mac writes only its own small file, **GrokGauge/history/<this Mac>.json**, and the 7-day graphs merge every Mac's file. Usage is account-wide, so matching readings are combined (highest wins), not added. Only percentages, times and Mac names are written — never your Grok login or anything from ~/.grok. With no folder, history stays on this Mac.") {
-            PrefRow(label: "Sync history across Macs", detail: s.folder == nil ? "No sync folder found — history stays on this Mac" : nil) {
-                Toggle("", isOn: Binding(get: { history.sync.enabled }, set: { history.setEnabled($0) }))
-                    .toggleStyle(.switch).labelsHidden()
-            }
-            Divider()
-            PrefRow(label: "Folder", detail: s.folder.map { "\(Self.abbreviate($0)) · \(s.origin?.label ?? "")"
-                + (s.folders.count > 1 ? " · also \(s.folders.dropFirst().map(Self.abbreviate).joined(separator: ", ")) (found automatically)" : "") } ?? "None") {
-                Button(s.folder == nil ? "Choose…" : "Change…") { history.chooseFolder() }
-                Menu("More") {
-                    Button("Use iCloud Drive") { history.useICloudDrive() }
-                    if history.hasChosenFolder {
-                        Button("Use Settings-Sync or Found Folder") { history.setChosenFolder(nil) }
-                    }
-                }
-                .fixedSize()
-            }
-            if s.isActive {
-                Divider()
-                PrefRow(label: "Status", detail: historyStatusDetail(s)) {
-                    Button("Sync Now") { history.syncNow() }
-                }
+    /// Settings + history in one line, e.g. "In sync · 3 Macs (Air-M4, …) · synced 11:38 PM".
+    private var syncStatusLine: String {
+        let settingsPart: SyncSummary.SettingsPart
+        if !settingsStore.settingsSyncEnabled { settingsPart = .off } else {
+            switch settingsStore.syncState {
+            case .off: settingsPart = .waiting
+            case .synced(let d): settingsPart = .synced(d)
+            case .failed(let m): settingsPart = .failed(m)
             }
         }
-    }
-
-    private func historyStatusDetail(_ s: HistoryStore.SyncStatus) -> String {
-        var parts: [String] = []
-        if let e = s.writeError ?? s.lastError { parts.append("⚠︎ \(e)") }
-        if let e = s.localSaveError { parts.append("⚠︎ history.json: \(e)") }
-        parts.append(s.machineCount == 1 ? "1 Mac" : "\(s.machineCount) Macs")
-        if !s.machineNames.isEmpty { parts[parts.count - 1] += " (\(s.machineNames.joined(separator: ", ")))" }
-        parts.append(s.lastSync.map { "synced \($0.formatted(date: .omitted, time: .shortened))" } ?? "not synced yet")
-        if !s.skipped.isEmpty { parts.append("⚠︎ skipped \(s.skipped.count) bad file\(s.skipped.count == 1 ? "" : "s") (see Diagnostics)") }
-        return parts.joined(separator: " · ")
-    }
-
-    private var syncStatusText: String {
-        switch settingsStore.syncState {
-        case .off: return "Waiting…"
-        case .synced(let d): return "In sync · checked \(d.formatted(date: .omitted, time: .shortened))"
-        case .failed(let m): return "⚠︎ \(m)"
-        }
+        let h = history.sync
+        let historyPart = SyncSummary.HistoryPart(
+            enabled: h.enabled, machineCount: h.machineCount, machineNames: h.machineNames, lastSync: h.lastSync,
+            error: h.writeError ?? h.lastError ?? h.localSaveError.map { "history.json: \($0)" }, skipped: h.skipped.count)
+        return SyncSummary.line(settings: settingsPart, history: historyPart) { $0.formatted(date: .omitted, time: .shortened) }
     }
 
     static func abbreviate(_ url: URL) -> String {
@@ -541,6 +536,8 @@ struct DiagnosticsTab: View {
     @ObservedObject var status: ServiceStatusStore
     let settings: GaugeSettings
     let tokenExpiry: () -> Date?
+    /// Where sync moved from automatically (0.9.5 one-folder migration), if it did.
+    var migratedFrom: URL? = nil
     @ViewState var expiry: Date? = nil
     @ViewState var copied = false
 
@@ -641,10 +638,17 @@ struct DiagnosticsTab: View {
             }
             if s.isActive {
                 Divider()
-                PrefRow(label: s.folders.count > 1 ? "Folders" : "Folder",
-                        detail: s.folders.count > 1 ? "Your settings sync through a different folder than the MacSyncing folder found automatically, so history is written to and read from both." : nil) {
-                    Text(s.folders.map(PreferencesView.abbreviate).joined(separator: "\n")).foregroundStyle(.secondary)
-                        .lineLimit(4).multilineTextAlignment(.trailing).textSelection(.enabled)
+                PrefRow(label: "Folder", detail: migratedFrom.map { "Moved here automatically from \(PreferencesView.abbreviate($0)), the folder your other Macs use." }) {
+                    Text(s.folder.map(PreferencesView.abbreviate) ?? "—").foregroundStyle(.secondary)
+                        .lineLimit(3).multilineTextAlignment(.trailing).textSelection(.enabled)
+                }
+                if !s.readOnlyFolders.isEmpty {
+                    Divider()
+                    PrefRow(label: "Other folders found",
+                            detail: "Older sync folders that still hold GrokGauge history. They're read (never written), so Macs on older versions still merge in.") {
+                        Text(s.readOnlyFolders.map(PreferencesView.abbreviate).joined(separator: "\n")).foregroundStyle(.secondary)
+                            .lineLimit(4).multilineTextAlignment(.trailing).textSelection(.enabled)
+                    }
                 }
                 Divider()
                 PrefRow(label: "This Mac's file", detail: s.ownFile.map { PreferencesView.abbreviate($0) }) {
@@ -769,7 +773,7 @@ func historySyncSummary(_ s: HistoryStore.SyncStatus) -> String {
                  "last sync \(s.lastSync.map(DiagnosticsReport.stamp) ?? "never")"]
     if !s.skipped.isEmpty { parts.append("\(s.skipped.count) skipped file\(s.skipped.count == 1 ? "" : "s"): \(s.skipped.map(\.reason).joined(separator: "; "))") }
     if !s.conflictCopies.isEmpty { parts.append("\(s.conflictCopies.count) conflict cop\(s.conflictCopies.count == 1 ? "y" : "ies") merged") }
-    if s.folders.count > 1 { parts.append("\(s.folders.count) folders (settings-sync and found folder differ)") }
+    if !s.readOnlyFolders.isEmpty { parts.append("also reading \(s.readOnlyFolders.count) older folder\(s.readOnlyFolders.count == 1 ? "" : "s")") }
     parts.append("last write \(s.lastWrite.map(DiagnosticsReport.stamp) ?? "never")")
     if let e = s.writeError { parts.append("write error: \(e)") }
     if let e = s.localSaveError { parts.append("local save error: \(e)") }
