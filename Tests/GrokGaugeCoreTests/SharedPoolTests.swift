@@ -46,7 +46,10 @@ import Testing
         // Readings a few minutes apart can drift; a week already known as shared stays shared.
         #expect(!PoolSharing.isShared(bot: bot(37, reset: end), pool: pool(33)))
         #expect(PoolSharing.isShared(bot: bot(37, reset: end), pool: pool(33), knownSharedEnd: end))
-        #expect(!PoolSharing.isShared(bot: bot(60, reset: end), pool: pool(33), knownSharedEnd: end))
+        // Even far apart (Grok Bot's cached reading hours newer than the last Grok fetch): same week, same pool.
+        #expect(PoolSharing.isShared(bot: bot(60, reset: end), pool: pool(33), knownSharedEnd: end))
+        // A remembered shared week doesn't carry over to a pool with another reset.
+        #expect(!PoolSharing.isShared(bot: bot(60, reset: end.addingTimeInterval(7 * 86_400)), pool: pool(33, end: end.addingTimeInterval(7 * 86_400)), knownSharedEnd: end))
     }
 
     @Test func missingBotProductMeansZeroShare() {
@@ -57,9 +60,12 @@ import Testing
     @Test func waitsForShareWhilePoolLoads() {
         let loading = BotRingReading.make(bot: bot(33.7, reset: end), pool: nil, knownSharedEnd: end, poolLoading: true)
         #expect(loading.isShared && loading.percent == nil)
-        // Grok not signed in: show Grok Bot's own reading rather than waiting forever.
+        // Signed out or login expired in a shared week: no share to show, but never the whole-pool reading.
         let failed = BotRingReading.make(bot: bot(33.7, reset: end), pool: nil, knownSharedEnd: end, poolLoading: false)
-        #expect(!failed.isShared && failed.percent == 33.7)
+        #expect(failed.isShared && failed.percent == nil)
+        // Never seen as shared: Grok Bot's own allowance, as before.
+        let unknown = BotRingReading.make(bot: bot(33.7, reset: end), pool: nil, knownSharedEnd: nil, poolLoading: false)
+        #expect(!unknown.isShared && unknown.percent == 33.7)
     }
 
     @Test func cursorShare() {
@@ -158,3 +164,61 @@ import Testing
         #expect(HistorySyncFolder.candidates(chosen: nil, settingsSync: nil, detected: nil).isEmpty)
     }
 }
+
+/// 0.9.5: the menu bar's B is the Grok Bot ring's number, so on the shared pool it's Grok Bot's share, never the pool.
+@Suite struct MenuBarBotShareTests {
+    let now = Date(timeIntervalSince1970: 1_792_442_000)
+    var end: Date { Date(timeIntervalSince1970: 1_792_655_700) }
+
+    func pool(_ percent: Double, botShare: Double? = 27) -> UsageSnapshot {
+        var products = [ProductShare(key: "GrokChat", name: "Chat", symbol: "x", percent: 9)]
+        if let botShare { products.append(ProductShare(key: "GrokBot", name: "Grok Bot", symbol: "x", percent: botShare)) }
+        return UsageSnapshot(percent: percent, percentInferred: false, period: .weekly,
+                             periodStart: end.addingTimeInterval(-7 * 86_400), periodEnd: end, products: products,
+                             prepaidBalanceCents: 0, onDemandUsedCents: 0, onDemandCapCents: 0, fetchedAt: now)
+    }
+    func bot(_ percent: Double, reset: Date? = nil) -> GrokBotSnapshot {
+        GrokBotSnapshot(percent: percent, nextReset: reset ?? end, readAt: now, expiresAt: nil)
+    }
+    private func text(_ s: [MenuBarSegment]) -> String { s.map(\.text).joined() }
+    private func title(_ pool: UsageSnapshot?, _ bot: GrokBotSnapshot, known: Date? = nil, mode: MenuBarMode = .both) -> String {
+        let ring = BotRingReading.make(bot: bot, pool: pool, knownSharedEnd: known)
+        return text(MenuBarLayout.segments(grok: pool?.roundedPercent, bot: MenuBarLayout.botPercent(ring), mode: mode))
+    }
+
+    @Test func bShowsTheShareNotThePool() {
+        #expect(title(pool(62), bot(62.4)) == " G 62% · B 27%")
+        let ring = BotRingReading.make(bot: bot(62.4), pool: pool(62), knownSharedEnd: nil)
+        #expect(MenuBarLayout.botPercent(ring) == ring.roundedPercent)   // same number as the ring
+        #expect(MenuBarLayout.botPercent(ring) == 27)
+    }
+
+    @Test func singleNumberModesUseTheShareToo() {
+        #expect(title(pool(62), bot(62.4), mode: .grokBotOnly) == " 27%")
+        #expect(title(pool(62), bot(62.4), mode: .highest) == " 62%")   // the pool (G) is higher than B's share
+    }
+
+    @Test func noBotProductMeansZeroNotThePool() {
+        #expect(title(pool(30, botShare: nil), bot(30.5)) == " G 30% · B 0%")
+    }
+
+    @Test func staleBotCacheInASharedWeekStillShowsTheShare() {
+        // Grok Bot's cached reading is far from the latest Grok fetch, but the week is known to be shared.
+        #expect(title(pool(62), bot(48), known: end) == " G 62% · B 27%")
+    }
+
+    @Test func signedOutInASharedWeekShowsADashNotThePool() {
+        // Nothing to show, so the app shows its placeholder (" login" when signed out), not the pool's 62%.
+        #expect(title(nil, bot(62.4), known: end) == "")
+        #expect(title(nil, bot(62.4), known: end, mode: .grokBotOnly) == "")
+        let ring = BotRingReading.make(bot: bot(62.4), pool: nil, knownSharedEnd: end)
+        #expect(text(MenuBarLayout.segments(grok: 62, bot: MenuBarLayout.botPercent(ring), mode: .both)) == " G 62% · B –")
+    }
+
+    @Test func ownAllowanceStillShowsGrokBotsOwnReading() {
+        let other = end.addingTimeInterval(3 * 86_400)
+        #expect(title(pool(62), bot(14, reset: other)) == " G 62% · B 14%")
+        #expect(MenuBarLayout.botPercent(nil) == nil)
+    }
+}
+

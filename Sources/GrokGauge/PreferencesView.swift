@@ -207,12 +207,13 @@ struct PreferencesView: View {
         let s = settingsStore.settings
         let mode = MenuBarLayout.effectiveMode(s.menuBarMode, hasGrokBot: store.hasGrokBot)
         let sample = MenuBarLayout.segments(
-            grok: store.snapshot?.roundedPercent ?? 10, bot: store.botRing?.roundedPercent ?? (store.hasGrokBot ? 86 : nil),
+            grok: store.snapshot?.roundedPercent ?? 10,
+            bot: store.botRing.map { MenuBarLayout.botPercent($0) } ?? (store.hasGrokBot ? 27 : nil),
             grokDays: store.snapshot?.timeUntilReset().map(UsageFormat.wholeDays) ?? 5,
             botDays: store.botRing?.timeUntilReset().map(UsageFormat.wholeDays),
             mode: mode, thresholds: s.thresholds, showDays: s.showDaysToReset)
         let logoLevel = MenuBarLayout.logoLevel(grok: store.snapshot?.roundedPercent ?? 10,
-                                                bot: store.botRing?.roundedPercent, thresholds: s.thresholds)
+                                                bot: MenuBarLayout.botPercent(store.botRing), thresholds: s.thresholds)
         return Group {
             PrefGroup(title: "Show in the menu bar",
                       footer: store.hasGrokBot ? nil : "Grok Bot isn't installed, so the Grok Bot options show Grok.") {

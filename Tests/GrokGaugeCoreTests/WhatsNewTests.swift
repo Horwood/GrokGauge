@@ -325,7 +325,7 @@ private final class ScriptedHTTP: NewsHTTP, @unchecked Sendable {
     private let lock = NSLock()
 
     func get(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        lock.lock(); requests.append(request); lock.unlock()
+        lock.withLock { requests.append(request) }   // scoped locking is safe in async code
         let key = request.url!.absoluteString
         if failing.contains(key) { throw URLError(.timedOut) }
         guard let reply = replies[key] else { throw URLError(.cannotFindHost) }

@@ -11,6 +11,13 @@ public enum MenuBarLayout {
         }
     }
 
+    /// The Grok Bot number for the menu bar's B (and "highest"): the same value as the Grok Bot ring. On the
+    /// shared pool that's Grok Bot's share of it, never Grok Bot's own reading (which is the whole pool);
+    /// nil while the share isn't known yet. With its own allowance, Grok Bot's own reading.
+    public static func botPercent(_ ring: BotRingReading?) -> Int? {
+        ring?.roundedPercent
+    }
+
     /// `grok`/`bot` are rounded percents (nil = no current reading); `grokDays`/`botDays` are whole days to reset.
     /// Returns an empty list when there is nothing to show (callers then show a placeholder).
     public static func segments(grok: Int?, bot: Int?, grokDays: Int? = nil, botDays: Int? = nil,

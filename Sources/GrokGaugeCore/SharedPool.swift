@@ -21,9 +21,6 @@ public enum PoolSharing {
     public static let resetTolerance: TimeInterval = 120
     /// To start treating them as one pool, the two percents must be this close (points).
     public static let percentTolerance = 2.0
-    /// Once a period is known to be shared, readings taken a few minutes apart may drift this far
-    /// without flipping the ring back and forth.
-    public static let stickyPercentTolerance = 6.0
 
     /// Product keys (normalized: lowercased, no "_"/spaces) for Grok Bot's and Cursor's share of the pool.
     public static let botProductKeys: Set<String> = ["grokbot", "bot"]
@@ -34,9 +31,12 @@ public enum PoolSharing {
     public static func isShared(bot: GrokBotSnapshot, pool: UsageSnapshot, knownSharedEnd: Date? = nil) -> Bool {
         guard let botReset = bot.nextReset, let poolEnd = pool.periodEnd else { return false }
         guard abs(botReset.timeIntervalSince(poolEnd)) <= resetTolerance else { return false }
+        // A week already seen as shared stays shared while the resets still line up: Grok Bot's cached reading
+        // and the Grok fetch can be hours apart, and the gap must never flip the ring (and the menu bar's B)
+        // to the whole-pool reading.
         let sticky = knownSharedEnd.map { abs($0.timeIntervalSince(poolEnd)) <= resetTolerance } ?? false
-        let tolerance = sticky ? stickyPercentTolerance : percentTolerance
-        return abs(bot.percent - pool.percent) <= tolerance
+        if sticky { return true }
+        return abs(bot.percent - pool.percent) <= percentTolerance
     }
 
     /// The pool's share for one of `keys` (nil when the reply has no such product).
@@ -93,8 +93,8 @@ public struct BotRingReading: Equatable, Sendable {
     /// Decides what the ring shows.
     /// - `pool`: the latest Grok billing snapshot (nil while loading or when Grok isn't signed in).
     /// - `knownSharedEnd`: the pool end last seen as shared (remembered across launches).
-    /// - `poolLoading`: true while the first Grok fetch hasn't finished; with a remembered shared week the
-    ///   ring waits for the share rather than briefly showing the whole pool.
+    /// - `poolLoading`: kept for callers; with a remembered shared week the ring waits for the share whether
+    ///   the pool is loading or unavailable, rather than showing the whole pool.
     public static func make(bot: GrokBotSnapshot, pool: UsageSnapshot?, knownSharedEnd: Date?,
                             poolLoading: Bool = false) -> BotRingReading {
         if let pool, PoolSharing.isShared(bot: bot, pool: pool, knownSharedEnd: knownSharedEnd) {
@@ -103,7 +103,9 @@ public struct BotRingReading: Equatable, Sendable {
             return BotRingReading(mode: .shared, percent: share, nextReset: pool.periodEnd ?? bot.nextReset,
                                   readAt: pool.fetchedAt, own: bot)
         }
-        if pool == nil, poolLoading, let known = knownSharedEnd, let reset = bot.nextReset,
+        // No pool reading (still loading, signed out or the login expired) in a week known to be shared: the share
+        // isn't known, so show none rather than Grok Bot's own reading, which is the whole pool.
+        if pool == nil, let known = knownSharedEnd, let reset = bot.nextReset,
            abs(known.timeIntervalSince(reset)) <= PoolSharing.resetTolerance {
             return BotRingReading(mode: .shared, percent: nil, nextReset: reset, readAt: bot.readAt, own: bot)
         }

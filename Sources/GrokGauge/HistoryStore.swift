@@ -309,7 +309,8 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Synthetic week for --render-preview --demo.
-    static func demoHistory(grokNow: Double, botNow: Double, now: Date = Date()) -> UsageHistory {
+    /// `botShared`: Grok Bot is on the shared pool, so its share resets with the pool.
+    static func demoHistory(grokNow: Double, botNow: Double, botShared: Bool = false, now: Date = Date()) -> UsageHistory {
         var h = UsageHistory()
         let start = now.addingTimeInterval(-7 * 86_400)
         for i in 0...56 {
@@ -325,10 +326,18 @@ final class HistoryStore: ObservableObject {
             let wobble = sin(Double(i) * 0.9) * 2.5
             let previousGrok = h.grok.last.flatMap { ($0.t < grokReset) == (t < grokReset) ? $0.p : nil } ?? 0
             h.record(.grok, percent: max(previousGrok, g + wobble * 0.4), at: t)
-            h.record(.grokBot, percent: max(h.grokBot.last?.p ?? 0, botNow * pow(f, 1.15) + wobble), at: t)
+            if botShared {
+                let b: Double = t < grokReset
+                    ? 20 + 18 * (t.timeIntervalSince(start) / grokReset.timeIntervalSince(start))
+                    : botNow * pow(t.timeIntervalSince(grokReset) / now.timeIntervalSince(grokReset), 1.1)
+                let previousBot = h.grokBot.last.flatMap { ($0.t < grokReset) == (t < grokReset) ? $0.p : nil } ?? 0
+                h.record(.grokBot, percent: max(previousBot, b + wobble * 0.3), at: t, shared: true)
+            } else {
+                h.record(.grokBot, percent: max(h.grokBot.last?.p ?? 0, botNow * pow(f, 1.15) + wobble), at: t)
+            }
         }
         h.record(.grok, percent: grokNow, at: now)
-        h.record(.grokBot, percent: botNow, at: now)
+        h.record(.grokBot, percent: botNow, at: now, shared: botShared ? true : nil)
         return h
     }
 }

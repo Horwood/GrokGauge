@@ -6,8 +6,8 @@
 #   VERSION=1.2.3 ./scripts/build-app.sh    # override version (defaults to ./VERSION)
 #   REQUIRE_UNIVERSAL=1 ...                 # fail instead of falling back to fewer archs (CI)
 #   CODESIGN_IDENTITY="Developer ID Application: …"  # default "-" (ad-hoc)
-#   SWIFT_BUILD_SYSTEM=swiftbuild           # default "native" (the newer swiftbuild engine
-#                                           # fails to initialize with Command Line Tools only)
+#   SWIFT_BUILD_SYSTEM=native               # force a build system (default: the toolchain's own;
+#                                           # SwiftPM deprecated `--build-system native`)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -21,7 +21,8 @@ DIST="$ROOT/dist"
 APP="$DIST/$APP_NAME.app"
 ZIP="$DIST/$APP_NAME-$VERSION.zip"
 IDENTITY="${CODESIGN_IDENTITY:--}"
-BUILD_SYSTEM="${SWIFT_BUILD_SYSTEM:-native}"
+build_args=()
+if [[ -n "${SWIFT_BUILD_SYSTEM:-}" ]]; then build_args+=(--build-system "$SWIFT_BUILD_SYSTEM"); fi
 
 echo "==> GrokGauge $VERSION ($BUILD_NUMBER) for: $ARCHS"
 rm -rf "$DIST"
@@ -31,9 +32,11 @@ binaries=()
 for arch in $ARCHS; do
   triple="${arch}-apple-macosx${MIN_MACOS}"
   echo "==> swift build ($triple)"
-  if swift build -c release --build-system "$BUILD_SYSTEM" --product "$APP_NAME" --triple "$triple"; then
-    bin_dir="$(swift build -c release --build-system "$BUILD_SYSTEM" --triple "$triple" --show-bin-path)"
-    binaries+=("$bin_dir/$APP_NAME")
+  if swift build -c release ${build_args[@]+"${build_args[@]}"} --product "$APP_NAME" --triple "$triple"; then
+    bin_dir="$(swift build -c release ${build_args[@]+"${build_args[@]}"} --triple "$triple" --show-bin-path)"
+    # Copy it aside: some build systems put every --triple in the same output folder.
+    cp "$bin_dir/$APP_NAME" "$DIST/.$APP_NAME-$arch"
+    binaries+=("$DIST/.$APP_NAME-$arch")
   elif [[ "${REQUIRE_UNIVERSAL:-0}" == "1" ]]; then
     echo "error: build for $arch failed" >&2
     exit 1
@@ -46,6 +49,7 @@ done
 echo "==> Assembling $APP_NAME.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo -create "${binaries[@]}" -output "$APP/Contents/MacOS/$APP_NAME"
+rm -f "${binaries[@]}"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD__/$BUILD_NUMBER/g" \
   Resources/Info.plist > "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

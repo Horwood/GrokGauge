@@ -342,7 +342,7 @@ struct OnboardingView: View {
 
     private var menuBarSegments: [MenuBarSegment] {
         OnboardingCopy.menuBarExample(
-            mode: settings.menuBarMode, grok: store.snapshot?.roundedPercent, bot: store.botRing?.roundedPercent,
+            mode: settings.menuBarMode, grok: store.snapshot?.roundedPercent, bot: MenuBarLayout.botPercent(store.botRing),
             hasGrokBot: store.hasGrokBot, thresholds: settings.thresholds, showDays: settings.showDaysToReset,
             grokDays: store.snapshot?.timeUntilReset().map(UsageFormat.wholeDays),
             botDays: store.botRing?.timeUntilReset().map(UsageFormat.wholeDays))

@@ -143,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let s = settingsStore.settings
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         let grok = store.snapshot?.roundedPercent
-        let bot = store.botRing?.roundedPercent
+        let bot = MenuBarLayout.botPercent(store.botRing)   // B = the ring's number (Grok Bot's share on the shared pool)
         let mode = MenuBarLayout.effectiveMode(s.menuBarMode, hasGrokBot: store.hasGrokBot)
         var segments = MenuBarLayout.segments(
             grok: grok, bot: bot,
@@ -297,17 +297,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 /// Synchronous activation for a menu bar app.
 @MainActor
 enum AppActivation {
-    /// Makes GrokGauge the active app right away. `activate(ignoringOtherApps:)` is deprecated on macOS 14 in
-    /// favour of cooperative activation, but for a status item app responding to the user's own click it is
-    /// still the call that takes effect immediately; the cooperative call is made too.
+    /// Makes GrokGauge the active app right away, in response to the user's own click.
+    ///
+    /// Asks with the macOS 14+ cooperative `NSApp.activate()` first. That call only *requests* activation (it
+    /// "doesn't guarantee" it), and for a menu bar (LSUIElement) app the request often lands late or not at all:
+    /// the 0.9.3 bugs (dropdown not key, click-away not closing it, gear menu dismissed). Through macOS 27 there
+    /// is still no non-deprecated call that activates a menu bar app immediately, so when the request hasn't
+    /// taken effect the immediate activation 0.9.4 relies on is made too.
     static func activateNow() {
         if NSApp.isActive { return }
-        legacyActivate()
         NSApp.activate()
+        if !NSApp.isActive { (NSApp as ImmediateActivating).activate(ignoringOtherApps: true) }
     }
-
-    @available(macOS, deprecated: 14.0)
-    private static func legacyActivate() { NSApp.activate(ignoringOtherApps: true) }
 
     /// True when the app is active and `window` is key, so a menu popped up now won't be dismissed by an
     /// activation that is still on its way.
@@ -315,3 +316,12 @@ enum AppActivation {
         NSApp.isActive && (window?.isKeyWindow ?? false)
     }
 }
+
+/// The immediate activation call (`NSApplication.activate(ignoringOtherApps:)`), reached through a protocol so
+/// the build stays free of its macOS 14 deprecation warning. See `AppActivation.activateNow()` for why it's needed.
+@MainActor
+private protocol ImmediateActivating {
+    func activate(ignoringOtherApps flag: Bool)
+}
+
+extension NSApplication: ImmediateActivating {}

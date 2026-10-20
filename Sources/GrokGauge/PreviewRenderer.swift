@@ -16,7 +16,10 @@ enum PreviewRenderer {
         if demo {
             snapshot = sample
             bot = sampleBot
-            historyStore = HistoryStore.preview(HistoryStore.demoHistory(grokNow: sample.percent, botNow: sampleBot.percent))
+            // Grok Bot is on the shared pool in the demo (as for SuperGrok since mid-October 2026): its ring and
+            // history are its share of the pool.
+            let share = BotRingReading.make(bot: sampleBot, pool: sample, knownSharedEnd: nil).percent ?? 0
+            historyStore = HistoryStore.preview(HistoryStore.demoHistory(grokNow: sample.percent, botNow: share, botShared: true))
         } else {
             do {
                 snapshot = try await BillingClient(appVersion: AppInfo.version).fetch()
@@ -195,9 +198,11 @@ enum PreviewRenderer {
         }
 
         let g = snapshot.roundedPercent
-        let b = bot?.roundedPercent
+        // B is the Grok Bot ring's number: its share of the pool when shared, never its whole-pool reading.
+        let ring = bot.map { BotRingReading.make(bot: $0, pool: snapshot, knownSharedEnd: nil) }
+        let b = MenuBarLayout.botPercent(ring)
         let gd = snapshot.timeUntilReset().map(UsageFormat.wholeDays)
-        let bd = bot?.timeUntilReset().map(UsageFormat.wholeDays)
+        let bd = ring?.timeUntilReset().map(UsageFormat.wholeDays)
         let palette = Palette.standard
         func item(_ mode: MenuBarMode, days: Bool = false, grok: Int? = nil) -> MenuBarItem {
             let gg = grok ?? g
@@ -222,13 +227,15 @@ enum PreviewRenderer {
             percent: 42.2, percentInferred: false, period: .weekly,
             periodStart: now.addingTimeInterval(-4.2 * 86_400),
             periodEnd: now.addingTimeInterval(2.8 * 86_400),
+            // Adds up to the 42.2% pool; Grok Bot's 27% share is what its ring and the menu bar's B show.
             products: [
-                share("GrokChat", "Chat", "bubble.left.and.bubble.right.fill", 20.1),
-                share("GrokImagine", "Imagine", "photo.on.rectangle.angled", 10.4),
-                share("GrokVoice", "Voice", "waveform", 3.5),
-                share("GrokBuild", "Build", "hammer.fill", 6.2),
-                share("Api", "API", "curlybraces", 2.0),
-                share("Cursor", "Cursor", "square.grid.2x2.fill", 3.1),
+                share("GrokBot", "Grok Bot", "sparkles", 27.0),
+                share("GrokChat", "Chat", "bubble.left.and.bubble.right.fill", 7.4),
+                share("GrokImagine", "Imagine", "photo.on.rectangle.angled", 3.1),
+                share("GrokVoice", "Voice", "waveform", 1.0),
+                share("GrokBuild", "Build", "hammer.fill", 2.2),
+                share("Api", "API", "curlybraces", 0.4),
+                share("Cursor", "Cursor", "square.grid.2x2.fill", 1.1),
             ],
             prepaidBalanceCents: 1_446, onDemandUsedCents: 0, onDemandCapCents: 0,
             fetchedAt: now)
@@ -236,7 +243,8 @@ enum PreviewRenderer {
 
     static var sampleBot: GrokBotSnapshot {
         let now = Date()
-        return GrokBotSnapshot(percent: 86.3, nextReset: now.addingTimeInterval(3.6 * 86_400),
+        // On the shared pool: Grok Bot's own reading is the whole pool (same reset), so the ring shows its share.
+        return GrokBotSnapshot(percent: 42.6, nextReset: now.addingTimeInterval(2.8 * 86_400),
                                readAt: now.addingTimeInterval(-6 * 60), expiresAt: now.addingTimeInterval(86_400),
                                planLabel: "SuperGrok Plus")
     }
