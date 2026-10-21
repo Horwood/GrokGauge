@@ -560,6 +560,10 @@ which wrote the code, tests, and docs to his spec.
 The same links are in GrokGauge under **Settings › About**.
 <br clear="left">
 
+### More apps from retroCombs
+
+- **[ClipGauge](https://stevencombs.github.io/ClipGauge/)**: local AI that renames and sorts your video and photo clips in place, with transcripts saved next to them. ([GitHub](https://github.com/stevencombs/ClipGauge))
+
 
 Endpoint details were cross-checked against the open-source
 [pi-grok-usage](https://github.com/apoapostolov/pi-grok-usage),

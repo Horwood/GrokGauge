@@ -273,3 +273,19 @@ html, body { overflow-x: clip; }
   .sync-spot { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) { .tour-grid { grid-template-columns: 1fr; } }
+
+/* more apps (shared with ClipGauge) */
+.apps-grid { grid-template-columns: 1fr 1fr; max-width: 920px; margin: 0 auto; }
+.app-card { display: flex; gap: 20px; align-items: flex-start; text-decoration: none; color: inherit; transition: transform .15s, border-color .15s; }
+a.app-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.app-card img { border-radius: 14px; flex: none; }
+.app-card h3 { margin: 4px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.app-card p { margin-bottom: 10px; }
+.app-card.current { opacity: .9; }
+.foot-grid.foot-4 { grid-template-columns: 2fr 1fr 1fr 1fr; }
+@media (max-width: 980px) {
+  .apps-grid { grid-template-columns: 1fr; }
+  .foot-grid.foot-4 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) { .foot-grid.foot-4 { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .app-card { transition: none; } }
