@@ -5,6 +5,11 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Fixed
+- **Days left in the menu bar is easier to read.** The " · 2d" days-to-reset text (and the separators in the
+  G · B style) now uses the full menu bar text color instead of a dimmed grey, so it stays legible on light,
+  dark and tinted menu bars. The Settings preview and the docs shots match.
+
 ## [0.9.5] - 2026-10-20
 
 ### Added

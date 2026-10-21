@@ -174,7 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         for seg in segments {
             title.append(NSAttributedString(string: seg.text, attributes: [
                 .font: font,
-                .foregroundColor: seg.level.map { palette.nsColor($0) } ?? NSColor.secondaryLabelColor,
+                .foregroundColor: seg.level.map { palette.nsColor($0) } ?? NSColor.labelColor,   // full-strength label color: days left and separators stay readable on any menu bar
             ]))
         }
         // With no logo, drop the leading space so the title doesn't look off-center.

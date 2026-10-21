@@ -310,7 +310,7 @@ struct MenuBarPreview: View {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
                 Text(seg.text)
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(seg.level.map { palette.color($0) } ?? Color.white.opacity(0.6))
+                    .foregroundStyle(seg.level.map { palette.color($0) } ?? Color.white.opacity(0.92))
             }
         }
         .padding(.horizontal, 10)

@@ -214,6 +214,8 @@ enum PreviewRenderer {
             ? [item(.highest), item(.both), item(.highest, days: true), item(.logoOnly), item(.grokOnly, grok: 95)]
             : [item(.highest), item(.both)]
         ok = renderMenuBar(items: items, palette: palette, to: dir.appendingPathComponent("menubar\(suffix).png")) && ok
+        ok = renderMenuBar(items: items, palette: palette, light: true,
+                           to: dir.appendingPathComponent("menubar-light\(suffix).png")) && ok
         print(ok ? "wrote previews to \(dir.path)" : "some previews failed")
         return ok ? 0 : 1
     }
@@ -314,16 +316,17 @@ enum PreviewRenderer {
         let logoColor: NSColor?
     }
 
-    private static func renderMenuBar(items: [MenuBarItem], palette: Palette, to url: URL) -> Bool {
+    private static func renderMenuBar(items: [MenuBarItem], palette: Palette, light: Bool = false, to url: URL) -> Bool {
         let scale: CGFloat = 2
         let height: CGFloat = 30
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
-        let neutral = NSColor.white.withAlphaComponent(0.6)
+        // Uncolored text (days left, separators) at full label strength, like NSColor.labelColor in the real menu bar.
+        let foreground = light ? NSColor.black.withAlphaComponent(0.85) : NSColor.white.withAlphaComponent(0.92)
         let titles: [NSAttributedString] = items.map { item in
             let t = NSMutableAttributedString()
             for seg in item.segments {
                 t.append(NSAttributedString(string: seg.text, attributes: [
-                    .font: font, .foregroundColor: seg.level.map { palette.nsColor($0) } ?? neutral]))
+                    .font: font, .foregroundColor: seg.level.map { palette.nsColor($0) } ?? foreground]))
             }
             return t
         }
@@ -333,7 +336,7 @@ enum PreviewRenderer {
         let width = widths.reduce(0, +) + gap * CGFloat(max(0, titles.count - 1)) + 32 + 120
 
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
-            NSColor(calibratedWhite: 0.12, alpha: 1).setFill()
+            NSColor(calibratedWhite: light ? 0.9 : 0.12, alpha: 1).setFill()
             NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8).fill()
             func tinted(_ color: NSColor) -> NSImage {
                 NSImage(size: glyph.size, flipped: false) { r in
@@ -345,7 +348,7 @@ enum PreviewRenderer {
             }
             var x: CGFloat = 16
             for (i, title) in titles.enumerated() {
-                tinted(items[i].logoColor ?? NSColor.white.withAlphaComponent(0.92))
+                tinted(items[i].logoColor ?? foreground)
                     .draw(in: NSRect(x: x, y: (height - 18) / 2, width: 18, height: 18))
                 let size = title.size()
                 title.draw(at: NSPoint(x: x + 18, y: (height - size.height) / 2))
@@ -354,7 +357,7 @@ enum PreviewRenderer {
             // A neutral system-style clock so it reads as a menu bar.
             let clock = NSAttributedString(string: "Wed 3:57 PM", attributes: [
                 .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
-                .foregroundColor: NSColor.white.withAlphaComponent(0.92)])
+                .foregroundColor: foreground])
             clock.draw(at: NSPoint(x: rect.maxX - clock.size().width - 14, y: (height - clock.size().height) / 2))
             return true
         }
