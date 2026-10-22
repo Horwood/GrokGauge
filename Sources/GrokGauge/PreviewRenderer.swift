@@ -48,20 +48,23 @@ enum PreviewRenderer {
                             to: dir.appendingPathComponent("popover-\(name)\(suffix).png")) && ok
         }
 
-        // The optional Cursor ring (0.9.3): full-size rings in a wider dropdown, and rings shrunk to the usual width.
+        // All four rings (Total, Grok, Grok Bot and the optional Cursor ring): slightly smaller rings in a wider
+        // dropdown, and rings shrunk to the usual width.
         for sizing in RingSizing.allCases {
-            var three = GaugeSettings()
-            three.sections = three.sections.map { item in
+            var four = GaugeSettings()
+            four.sections = four.sections.map { item in
                 var i = item
                 if i.id == .cursorRing { i.visible = true }
                 return i
             }
-            three.ringSizing = sizing
-            let view = PopoverView(store: store, settingsStore: SettingsStore.preview(three), history: historyStore,
-                                   updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
-                                   sizing: PopoverSizing(), status: status)
-            ok = renderView(view, scheme: .dark, background: true,
-                            to: dir.appendingPathComponent("popover-three-rings-\(sizing.rawValue)-dark\(suffix).png")) && ok
+            four.ringSizing = sizing
+            for scheme in [ColorScheme.dark, .light] {
+                let view = PopoverView(store: store, settingsStore: SettingsStore.preview(four), history: historyStore,
+                                       updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                       sizing: PopoverSizing(), status: status)
+                ok = renderView(view, scheme: scheme, background: true,
+                                to: dir.appendingPathComponent("popover-four-rings-\(sizing.rawValue)-\(scheme == .dark ? "dark" : "light")\(suffix).png")) && ok
+            }
         }
 
         if demo {

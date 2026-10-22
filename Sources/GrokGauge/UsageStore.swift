@@ -70,7 +70,7 @@ enum UsageProblem: Equatable {
         }
     }
 
-    /// Short caption under the Grok ring.
+    /// Short caption under the Total and Grok rings.
     var ringCaption: String {
         switch self {
         case .cliNotInstalled: return "Install the Grok CLI"
@@ -199,11 +199,15 @@ final class UsageStore: ObservableObject {
 
     var hasGrokBot: Bool { botProblem != .notInstalled }
 
-    /// Grok Bot is on the shared SuperGrok pool (its ring shows a share of the Grok ring).
+    /// Grok Bot is on the shared SuperGrok pool (its ring shows its share of the Total ring).
     var botShared: Bool { botRing?.isShared ?? false }
 
     /// Cursor's share of the Grok pool, when the billing reply lists it.
     var cursorShare: ProductShare? { snapshot.flatMap(PoolSharing.cursorShare(in:)) }
+
+    /// The pool split into Grok, Grok Bot and Cursor (the Total ring and its three slices). One function feeds
+    /// the rings, the menu bar tooltip, Diagnostics and the preview/tour renders.
+    var poolBreakdown: PoolBreakdown? { snapshot.map { PoolBreakdown.make(pool: $0, bot: botRing) } }
 
     /// Used by `--render-preview` to draw the popover with a fixed snapshot.
     func showPreview(_ snapshot: UsageSnapshot?, problem: UsageProblem? = nil, bot: GrokBotSnapshot?, botProblem: BotProblem?) {

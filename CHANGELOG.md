@@ -5,6 +5,23 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Changed
+- **A Total ring and a separate Grok ring.** The first ring is now **Total**, your whole SuperGrok weekly pool
+  (it used to be called Grok, which made Grok Bot look like it used less than Grok). A new **Grok** ring next to
+  it shows regular Grok use (grok.com, the Grok apps, Imagine, Voice, the API), worked out as Total minus Grok
+  Bot's and Cursor's shares, so Grok, Grok Bot and Cursor are each one's slice and add up to the Total. Every
+  slice is captioned "share of pool"; the Grok ring shows "—" while Grok Bot's share isn't known yet, and its
+  tooltip shows the sum (for example "Grok 8% + Grok Bot 70% + Cursor 18% = Total 96%"). Cursor's share is taken
+  out even while the Cursor ring is off.
+- **Four rings fit in one row.** With the Cursor ring on, the four rings sit side by side, slightly smaller, in a
+  slightly wider dropdown (or shrunk to the usual width with "Shrink rings to fit"). Captions can wrap to two
+  lines instead of being cut off.
+- Settings › Layout lists the **Total ring** and the new **Grok ring** (shown, right after Total; your existing
+  order and choices are kept). The welcome tour's rings and shared-pool cards, the menu bar tooltip and
+  VoiceOver labels, the history graph ("Total (whole pool)"), Settings › Diagnostics (a "Pool split" line) and
+  `--print-usage` (a `total` and a `regularGrok` ring; `grok` stays as the whole pool) use the new names. The
+  menu bar's number and styles are unchanged: G is still the Total.
+
 ### Fixed
 - **Days left in the menu bar is easier to read.** The " · 2d" days-to-reset text (and the separators in the
   G · B style) now uses the full menu bar text color instead of a dimmed grey, so it stays legible on light,

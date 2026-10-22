@@ -201,10 +201,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func accessibilitySummary(grok: Int?, bot: Int?) -> String {
         var parts: [String] = []
-        if let g = grok { parts.append("Grok \(g) percent, \(palette.level(g).spoken)") }
+        // The menu bar's G is the Total ring (the whole pool).
+        if let g = grok { parts.append("Grok pool total \(g) percent, \(palette.level(g).spoken)") }
         else if let p = store.problem { parts.append("Grok: \(p.title)") }
         if let b = bot {
-            parts.append("Grok Bot \(b) percent\(store.botShared ? " of the Grok pool" : ""), \(palette.level(b).spoken)")
+            parts.append("Grok Bot \(b) percent\(store.botShared ? " of the pool" : ""), \(palette.level(b).spoken)")
         }
         return parts.isEmpty ? "Loading" : parts.joined(separator: "; ")
     }
@@ -212,9 +213,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func tooltip() -> String {
         var lines: [String] = []
         if let s = store.snapshot {
-            var line = "Grok: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used (all products)"
+            var line = "Total: \(s.roundedPercent)% of this \(s.period.label.lowercased()) pool used (all products)"
             if let left = s.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
             lines.append(line)
+            if let b = store.poolBreakdown, b.roundedGrok != nil { lines.append(b.equation) }
             if let p = store.problem { lines.append("⚠︎ \(p.title)") }
         } else if let p = store.problem {
             lines.append("Grok: \(p.title)")
@@ -222,7 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             lines.append("Grok: loading")
         }
         if let b = store.botRing, let rounded = b.roundedPercent {
-            var line = b.isShared ? "Grok Bot: \(rounded)% of the shared Grok pool (its share)"
+            var line = b.isShared ? "Grok Bot: \(rounded)% of the shared pool (its share)"
                                   : "Grok Bot: \(rounded)% of weekly usage"
             if !b.isShared, let left = b.timeUntilReset() { line += ", resets in \(UsageFormat.countdown(left))" }
             lines.append(line)

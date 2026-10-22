@@ -101,7 +101,7 @@ import Testing
         """
         let o = try SettingsSync.decode(Data(old.utf8))
         #expect(!o.isVisible(.cursorRing))
-        #expect(o.sections.map(\.id).prefix(3) == [.grokRing, .grokBotRing, .cursorRing])
+        #expect(o.sections.map(\.id).prefix(4) == [.grokRing, .regularGrokRing, .grokBotRing, .cursorRing])
     }
 }
 

@@ -112,22 +112,26 @@ enum DebugCLI {
         print(lines.joined(separator: "\n"))
     }
 
-    /// The three rings exactly as the dropdown would show them right now.
+    /// The rings exactly as the dropdown would show them right now.
     private static func printRings(_ s: UsageSnapshot, bot: Result<GrokBotSnapshot, Error>) {
-        var lines = ["", "Rings (as GrokGauge shows them):", "  Grok:      \(s.roundedPercent)% (whole SuperGrok \(s.period.label.lowercased()) pool)"]
-        if case .success(let b) = bot {
-            let r = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil)
+        var lines = ["", "Rings (as GrokGauge shows them):", "  Total:     \(s.roundedPercent)% (whole SuperGrok \(s.period.label.lowercased()) pool)"]
+        var ring: BotRingReading?
+        if case .success(let b) = bot { ring = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil) }
+        let split = PoolBreakdown.make(pool: s, bot: ring)
+        lines.append("  Grok:      \(split.roundedGrok.map { "\($0)%" } ?? "–") share of pool (regular Grok use = Total − Grok Bot − Cursor)")
+        if case .success(let b) = bot, let r = ring {
             lines.append(r.isShared
-                ? "  Grok Bot:  \(r.roundedPercent ?? 0)% share of Grok pool  [shared pool detected: own reading \(String(format: "%.2f", b.percent))% resets with the pool]"
-                : "  Grok Bot:  \(r.roundedPercent ?? 0)% own weekly allowance  [not shared with the Grok pool]")
+                ? "  Grok Bot:  \(r.roundedPercent ?? 0)% share of pool  [shared pool detected: own reading \(String(format: "%.2f", b.percent))% resets with the pool]"
+                : "  Grok Bot:  \(r.roundedPercent ?? 0)% own weekly allowance  [not shared with the pool]")
         } else {
             lines.append("  Grok Bot:  no reading")
         }
         if let c = PoolSharing.cursorShare(in: s) {
-            lines.append("  Cursor:    \(String(format: "%.1f", c.percent))% share of Grok pool (optional ring, off by default)")
+            lines.append("  Cursor:    \(String(format: "%.1f", c.percent))% share of pool (optional ring, off by default)")
         } else {
-            lines.append("  Cursor:    not in the billing reply (ring shows \u{201C}Not in your Grok pool\u{201D})")
+            lines.append("  Cursor:    not in the billing reply (ring shows \u{201C}Not in your pool\u{201D})")
         }
+        lines.append("  Split:     \(split.equation)")
         print(lines.joined(separator: "\n"))
     }
 
@@ -181,9 +185,18 @@ enum DebugCLI {
         ]
         if let start = s.periodStart { obj["periodStart"] = iso(start) }
         if let end = s.periodEnd { obj["periodEnd"] = iso(end) }
-        var rings: [String: Any] = ["grok": ["percent": s.percent, "roundedPercent": s.roundedPercent, "caption": "whole pool"]]
+        // "grok" stays the whole pool for older scripts; "total" is the same number under its ring's name.
+        let whole: [String: Any] = ["percent": s.percent, "roundedPercent": s.roundedPercent, "caption": "whole pool"]
+        var rings: [String: Any] = ["grok": whole, "total": whole]
+        var botRing: BotRingReading?
+        if case .success(let b) = bot { botRing = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil) }
+        let split = PoolBreakdown.make(pool: s, bot: botRing)
+        var regular: [String: Any] = ["caption": "share of pool", "workedOut": "total - grokBot - cursor", "productsReported": split.productsReported]
+        if let g = split.grok { regular["percent"] = g }
+        if let g = split.roundedGrok { regular["roundedPercent"] = g }
+        rings["regularGrok"] = regular
         if let c = PoolSharing.cursorShare(in: s) {
-            rings["cursor"] = ["percent": c.percent, "product": c.key, "caption": "share of Grok pool"]
+            rings["cursor"] = ["percent": c.percent, "product": c.key, "caption": "share of pool"]
         } else {
             rings["cursor"] = ["status": "notReported"]
         }
@@ -191,7 +204,7 @@ enum DebugCLI {
             let r = BotRingReading.make(bot: b, pool: s, knownSharedEnd: nil)
             var o: [String: Any] = ["mode": r.isShared ? "sharedPool" : "separateAllowance",
                                     "sharedPoolDetected": r.isShared, "ownPercent": b.percent,
-                                    "caption": r.isShared ? "share of Grok pool" : "own weekly allowance"]
+                                    "caption": r.isShared ? "share of pool" : "own weekly allowance"]
             if let p = r.percent { o["percent"] = p }
             if let p = r.roundedPercent { o["roundedPercent"] = p }
             if let share = PoolSharing.botShare(in: s) { o["poolShare"] = share.percent }

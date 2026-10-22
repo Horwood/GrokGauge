@@ -90,14 +90,16 @@ struct PreferencesView: View {
                             note: { s in
                                 if s == .grokBotRing && !store.hasGrokBot { return "(Grok Bot not installed)" }
                                 if s == .grokBotRing && settingsStore.settings.ringStyle == .combined { return "(part of the combined ring)" }
-                                if s == .cursorRing { return "(Cursor's share of the Grok pool; off by default)" }
+                                if s == .grokRing { return "(the whole weekly pool)" }
+                                if s == .regularGrokRing { return "(regular Grok use: Total minus Grok Bot and Cursor)" }
+                                if s == .cursorRing { return "(Cursor's share of the pool; off by default)" }
                                 return nil
                             })
             }
             PrefGroup(title: "History graphs",
                       footer: "Shown in \u{201C}Last 7 days & pace\u{201D}. Turning both graphs off hides that section; "
                         + "its checkbox above works too. Bars show the highest % reached each day.") {
-                Toggle("Grok history", isOn: settings.showGrokHistory)
+                Toggle("Total (whole pool) history", isOn: settings.showGrokHistory)
                     .padding(.vertical, 6)
                 Divider()
                 HStack {
@@ -159,9 +161,10 @@ struct PreferencesView: View {
             }
             .disabled(!settingsStore.settings.isVisible(.productBreakdown))
             PrefGroup(title: "Rings",
-                      footer: "The Cursor ring shows Cursor's share of your SuperGrok weekly pool, from the same Grok usage "
-                        + "reply (no Cursor sign-in). When Grok Bot draws from that shared pool too, the Grok Bot ring "
-                        + "shows its share, labeled \u{201C}share of Grok pool\u{201D}.") {
+                      footer: "The Total ring is your whole SuperGrok weekly pool. The Grok, Grok Bot and Cursor rings are "
+                        + "each one's slice of it, labeled \u{201C}share of pool\u{201D}, and add up to the Total. Grok "
+                        + "(grok.com, the apps, Imagine, Voice, API) is worked out as Total minus Grok Bot and Cursor. "
+                        + "The Cursor ring needs no Cursor sign-in.") {
                 Picker("Ring style", selection: settings.ringStyle) {
                     ForEach(RingStyle.allCases) { Text($0.title).tag($0) }
                 }
@@ -177,15 +180,16 @@ struct PreferencesView: View {
                     }))
                     .padding(.vertical, 6)
                 Divider()
-                PrefRow(label: "With three rings") {
-                    Picker("With three rings", selection: settings.ringSizing) {
+                PrefRow(label: "With three or four rings") {
+                    Picker("With three or four rings", selection: settings.ringSizing) {
                         ForEach(RingSizing.allCases) { Text($0.title).tag($0) }
                     }
                     .labelsHidden()
                     .fixedSize()
                 }
                 .padding(.vertical, 4)
-                .disabled(!settingsStore.settings.isVisible(.cursorRing) || settingsStore.settings.ringStyle != .sideBySide)
+                .disabled(DropdownSection.rings.filter { settingsStore.settings.isVisible($0) && ($0 != .grokBotRing || store.hasGrokBot) }.count < 3
+                          || settingsStore.settings.ringStyle != .sideBySide)
             }
             PrefGroup(title: "Action buttons", footer: "Open X opens the X app if it's installed, otherwise x.com. GrokGauge reads no X data.") {
                 ReorderList(items: settings.actions, title: \.title, icon: { kind in
@@ -736,7 +740,8 @@ enum Diagnostics {
         #endif
         var summary = [
             "Menu bar: \(settings.menuBarMode.title)\(settings.showDaysToReset ? " + days" : "")\(settings.hideLogo ? ", no logo" : "")",
-            "Ring style: \(settings.ringStyle.title)\(settings.isVisible(.cursorRing) ? ", Cursor ring on (\(settings.ringSizing.rawValue))" : "")",
+            "Ring style: \(settings.ringStyle.title)\(settings.isVisible(.cursorRing) ? ", Cursor ring on (\(settings.ringSizing.rawValue))" : "")\(settings.isVisible(.regularGrokRing) ? "" : ", Grok ring off")",
+            "Pool split: \(store.poolBreakdown?.equation ?? "no reading yet") (Grok = Total − Grok Bot − Cursor)",
             "History graphs: \(historyGraphSummary(settings))",
             "Levels: \(settings.thresholds.warningAbove)/\(settings.thresholds.criticalAbove)\(settings.notificationsLinked ? "" : ", alerts \(settings.notificationThresholds.warningAbove)/\(settings.notificationThresholds.criticalAbove)")",
             "Colors: \(settings.colors == .system ? "system" : settings.colors == .colorblindFriendly ? "colorblind-friendly" : "custom")",
@@ -784,7 +789,7 @@ func historySyncSummary(_ s: HistoryStore.SyncStatus) -> String {
 
 /// e.g. "Bars (Grok, Grok Bot)" or "off" (for the Diagnostics settings summary).
 func historyGraphSummary(_ s: GaugeSettings) -> String {
-    let shown = [s.showGrokHistory ? "Grok" : nil, s.showGrokBotHistory ? "Grok Bot" : nil,
+    let shown = [s.showGrokHistory ? "Total" : nil, s.showGrokBotHistory ? "Grok Bot" : nil,
                  s.showsCursorHistory ? "Cursor" : nil].compactMap { $0 }
     guard s.isVisible(.historyPace), !shown.isEmpty else { return "off" }
     return "\(s.graphStyle.title) (\(shown.joined(separator: ", ")))"

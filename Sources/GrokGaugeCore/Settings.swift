@@ -4,13 +4,16 @@ import Foundation
 
 /// The sections of the dropdown, in their default order.
 public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiable {
-    case grokRing, grokBotRing, cursorRing, serviceStatus, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
+    // `grokRing` keeps its raw value but is now the Total ring (the whole pool), so saved order and visibility
+    // carry over; `regularGrokRing` (added after 0.9.5) is regular Grok use and lands right after it.
+    case grokRing, regularGrokRing, grokBotRing, cursorRing, serviceStatus, historyPace, resetDates, productBreakdown, credits, whatsNew, refreshRow, actions
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .grokRing: return "Grok ring"
+        case .grokRing: return "Total ring"
+        case .regularGrokRing: return "Grok ring"
         case .grokBotRing: return "Grok Bot ring"
         case .cursorRing: return "Cursor ring"
         case .serviceStatus: return "Service status"
@@ -27,6 +30,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
     public var symbol: String {
         switch self {
         case .grokRing: return "circle.circle"
+        case .regularGrokRing: return "bubble.left.and.bubble.right"
         case .grokBotRing: return "sparkles"
         case .cursorRing: return "cursorarrow.rays"
         case .serviceStatus: return "dot.radiowaves.left.and.right"
@@ -41,14 +45,14 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
     }
 
     /// The usage rings, in their default order.
-    public static let rings: [DropdownSection] = [.grokRing, .grokBotRing, .cursorRing]
+    public static let rings: [DropdownSection] = [.grokRing, .regularGrokRing, .grokBotRing, .cursorRing]
     public var isRing: Bool { Self.rings.contains(self) }
     /// Off until switched on in Settings (added in 0.9.3).
     public var visibleByDefault: Bool { self != .cursorRing }
 }
 
-/// With three rings side by side: keep each ring its usual size (the dropdown gets wider), or shrink the rings
-/// so all three fit the usual width.
+/// With three or four rings side by side: keep the rings large (the dropdown gets wider), or shrink them so they
+/// all fit the usual width.
 public enum RingSizing: String, Codable, CaseIterable, Sendable, Identifiable {
     case keepSize, fitWidth
     public var id: String { rawValue }

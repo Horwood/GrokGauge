@@ -34,23 +34,30 @@ public enum PopoverLayout {
         return (0..<t, t..<b, b..<count)
     }
 
-    // MARK: Width and ring size (0.9.3: optional third ring)
+    // MARK: Width and ring size (0.9.3: optional third ring; then a fourth, the Grok ring next to Total)
 
     /// The usual dropdown width (points).
     public static let standardWidth: Double = 320
     /// Wide enough for three full-size rings side by side.
     public static let wideWidth: Double = 392
+    /// Wide enough for four slightly smaller rings side by side.
+    public static let widerWidth: Double = 416
     public static let standardRing: Double = 104
-    /// Three rings in the usual width.
+    /// Three rings in the usual width, or four in the wider dropdown.
     public static let compactRing: Double = 84
+    /// Four rings in the usual width.
+    public static let smallRing: Double = 64
 
     /// Dropdown width for `ringCount` rings drawn side by side (or not).
     public static func width(ringCount: Int, sideBySide: Bool, sizing: RingSizing) -> Double {
-        sideBySide && ringCount >= 3 && sizing == .keepSize ? wideWidth : standardWidth
+        guard sideBySide && sizing == .keepSize else { return standardWidth }
+        if ringCount >= 4 { return widerWidth }
+        return ringCount >= 3 ? wideWidth : standardWidth
     }
 
     /// Ring diameter for `ringCount` rings side by side.
     public static func ringDiameter(ringCount: Int, sizing: RingSizing) -> Double {
-        ringCount >= 3 && sizing == .fitWidth ? compactRing : standardRing
+        if ringCount >= 4 { return sizing == .fitWidth ? smallRing : compactRing }
+        return ringCount >= 3 && sizing == .fitWidth ? compactRing : standardRing
     }
 }

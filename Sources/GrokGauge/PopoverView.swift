@@ -63,7 +63,7 @@ struct PopoverView: View {
         let visibleRings = self.visibleRings
         for item in settings.sections where item.visible {
             switch item.id {
-            case .grokRing, .grokBotRing, .cursorRing:
+            case .grokRing, .regularGrokRing, .grokBotRing, .cursorRing:
                 guard visibleRings.contains(item.id) else { continue }
                 if settings.ringStyle == .stacked {
                     out.append(.stackedRing(item.id))
@@ -102,7 +102,7 @@ struct PopoverView: View {
 
     private var sideBySide: Bool { settings.ringStyle == .sideBySide }
 
-    /// 320 pt, or wider for three full-size rings side by side ("Keep ring size").
+    /// 320 pt, or wider for three or four rings side by side ("Keep ring size").
     private var popoverWidth: CGFloat {
         CGFloat(PopoverLayout.width(ringCount: visibleRings.count, sideBySide: sideBySide, sizing: settings.ringSizing))
     }
@@ -184,7 +184,7 @@ struct PopoverView: View {
         case .rings(let rings):
             RingsRow(store: store, rings: rings, combined: settings.ringStyle == .combined && rings.count >= 2, size: ringDiameter)
         case .stackedRing(let section):
-            StackedRing(store: store, section: section, now: now)
+            StackedRing(store: store, section: section, cursorShown: visibleRings.contains(.cursorRing), now: now)
         case .problem:
             if store.snapshot != nil, let problem = store.problem {
                 InlineWarning(problem: problem)
@@ -219,7 +219,7 @@ struct PopoverView: View {
         case .actions:
             ActionsRow(actions: settings.actions.filter(\.visible).map(\.id)
                 .filter { $0 != .openGrokBot || store.hasGrokBot })
-        case .grokRing, .grokBotRing, .cursorRing:
+        case .grokRing, .regularGrokRing, .grokBotRing, .cursorRing:
             EmptyView()
         }
     }
@@ -306,9 +306,10 @@ private struct RingsRow: View {
         if combined {
             combinedRing.frame(maxWidth: .infinity)
         } else {
-            HStack(spacing: 0) {
+            // Top-aligned so a caption that wraps to two lines never knocks the rings out of line.
+            HStack(alignment: .top, spacing: 0) {
                 ForEach(rings, id: \.self) { r in
-                    RingContent.make(r, store: store).ringView(size: size)
+                    RingContent.make(r, store: store, cursorShown: rings.contains(.cursorRing)).ringView(size: size)
                         .padding(.horizontal, rings.count >= 3 ? 3 : 0)
                         .frame(maxWidth: .infinity)
                 }
@@ -318,11 +319,12 @@ private struct RingsRow: View {
 
     /// One ring for the highest reading; the caption lists every ring's number.
     private var combinedRing: some View {
-        let all = rings.map { RingContent.make($0, store: store) }
+        let all = rings.map { RingContent.make($0, store: store, cursorShown: rings.contains(.cursorRing)) }
         let topIndex = all.indices.max { (all[$0].percent ?? -1) < (all[$1].percent ?? -1) } ?? 0
         var top = all[topIndex]
         let others = all.enumerated().filter { $0.offset != topIndex && $0.element.percent != nil }
-        if !others.isEmpty { top.title += all.count > 2 ? " (highest)" : " (higher)" }
+        // The Total is always the highest (the slices add up to it), so it needs no "(highest)".
+        if !others.isEmpty && rings[topIndex] != .grokRing { top.title += all.count > 2 ? " (highest)" : " (higher)" }
         top.caption = all.map { c in "\(c.title) \(c.rounded.map { "\($0)%" } ?? "—")" }.joined(separator: " · ")
         top.captionAction = nil
         return top.ringView(size: 116)
@@ -338,19 +340,24 @@ private struct RingContent {
     var captionHelp: String?
     var captionAction: (() -> Void)?
     var detail: String?
+    /// What VoiceOver calls the ring (defaults to the title).
+    var spokenName: String?
 
     var rounded: Int? { percent.map { Int(max(0, $0).rounded()) } }
 
+    /// The Total ring is the whole pool; the Grok, Grok Bot and Cursor rings are slices of it.
+    /// `cursorShown`: whether the Cursor ring is on (the Grok ring's tooltip mentions Cursor's slice when it isn't).
     @MainActor
-    static func make(_ section: DropdownSection, store: UsageStore) -> RingContent {
+    static func make(_ section: DropdownSection, store: UsageStore, cursorShown: Bool = true) -> RingContent {
+        if section == .regularGrokRing { return regularGrok(store: store, cursorShown: cursorShown) }
         if section == .cursorRing {
             let s = store.snapshot
             let c = store.cursorShare
             var caption: String?
-            var help = "Cursor's share of your SuperGrok weekly pool, from the same Grok usage reply as the Grok ring "
+            var help = "Cursor's share of your SuperGrok weekly pool, from the same Grok usage reply as the Total ring "
                 + "(the Cursor row in Grok by product). No Cursor sign-in needed."
             if s != nil {
-                caption = c == nil ? "Not in your Grok pool" : "share of Grok pool"
+                caption = c == nil ? "Not in your pool" : "share of pool"
                 if c == nil { help = "xAI's usage reply doesn't list Cursor for your account right now." }
             } else if let p = store.problem {
                 caption = p.ringCaption
@@ -358,17 +365,19 @@ private struct RingContent {
             }
             return RingContent(title: "Cursor", percent: c?.percent, isLoading: s == nil && store.problem == nil,
                                caption: caption, captionHelp: help, captionAction: nil,
-                               detail: c == nil ? nil : s?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
+                               detail: c == nil ? nil : s?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" },
+                               spokenName: "Cursor, share of pool")
         }
         if section == .grokBotRing, let r = store.botRing, r.isShared {
             return RingContent(
                 title: "Grok Bot", percent: r.percent, isLoading: r.percent == nil,
-                caption: "share of Grok pool",
+                caption: "share of pool",
                 captionHelp: "Grok Bot now draws from your shared SuperGrok weekly pool, so this ring shows Grok Bot's "
                     + "share of it (the Grok Bot row in Grok by product). Grok Bot's own reading, "
-                    + "\(r.own.roundedPercent)%, is the whole pool, the same as the Grok ring.",
+                    + "\(r.own.roundedPercent)%, is the whole pool, the same as the Total ring.",
                 captionAction: nil,
-                detail: r.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
+                detail: r.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" },
+                spokenName: "Grok Bot, share of pool")
         }
         if section == .grokBotRing {
             let b = store.botSnapshot
@@ -390,20 +399,51 @@ private struct RingContent {
                 caption = "Inferred (none reported)"
                 help = "Grok's reply had no usage percentage. With an otherwise normal reply that means nothing used yet, so GrokGauge shows 0%."
             } else {
-                // "pool" everywhere: the Grok ring is the whole pool; the Grok Bot and Cursor rings and the
-                // Grok by product rows are shares of it.
+                // "pool" everywhere: the Total ring is the whole pool; the Grok, Grok Bot and Cursor rings and
+                // the Grok by product rows are shares of it.
                 caption = s.period == .weekly ? "SuperGrok weekly pool" : "\(s.period.label) pool"
                 let used = s.products.filter { $0.percent > 0 }
                     .map { "\($0.name) \($0.percent < 1 ? "<1" : String(Int($0.percent.rounded())))%" }
-                help = "All products together" + (used.isEmpty ? "." : ": " + used.joined(separator: ", ") + ". See Grok by product.")
+                help = "Your whole SuperGrok pool, all products together" + (used.isEmpty ? "." : ": " + used.joined(separator: ", ") + ". See Grok by product.")
+                if let b = store.poolBreakdown, b.roundedGrok != nil { help = (help ?? "") + " " + b.equation + "." }
             }
         } else if let p = store.problem {
             caption = p.ringCaption
             help = p.title
         }
-        return RingContent(title: "Grok", percent: s?.percent, isLoading: s == nil && store.problem == nil,
+        return RingContent(title: "Total", percent: s?.percent, isLoading: s == nil && store.problem == nil,
                            caption: caption, captionHelp: help, captionAction: nil,
-                           detail: s?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" })
+                           detail: s?.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" },
+                           spokenName: "Total, whole SuperGrok weekly pool")
+    }
+
+    /// Regular Grok use (grok.com, the Grok apps, Imagine, Voice, the API): worked out from the Total as
+    /// Total − Grok Bot − Cursor (see `PoolBreakdown`). "—" while a slice isn't known yet.
+    @MainActor
+    private static func regularGrok(store: UsageStore, cursorShown: Bool) -> RingContent {
+        let spoken = "Grok, regular use, worked out from the total"
+        guard let s = store.snapshot, let b = store.poolBreakdown else {
+            return RingContent(title: "Grok", percent: nil, isLoading: store.problem == nil,
+                               caption: store.problem?.ringCaption, captionHelp: store.problem?.title, captionAction: nil,
+                               detail: nil, spokenName: spoken)
+        }
+        var help: String
+        if let g = b.roundedGrok {
+            help = "Regular Grok use: grok.com, the Grok apps, Imagine, Voice and the API. Worked out from the Total: "
+                + b.equation + "."
+            if !cursorShown && b.cursor > 0 {
+                help += " Cursor's share is taken out even while the Cursor ring is off."
+            }
+            if g == 0 && b.total > 0 { help += " Grok Bot and Cursor account for the whole pool." }
+        } else if !b.productsReported {
+            help = "Worked out from the Total, but xAI's reply didn't list usage by product, so the split isn't known."
+        } else {
+            help = "Worked out from the Total once Grok Bot's share of the pool is known."
+        }
+        return RingContent(title: "Grok", percent: b.roundedGrok.map(Double.init), isLoading: false,
+                           caption: "share of pool", captionHelp: help, captionAction: nil,
+                           detail: b.roundedGrok == nil ? nil : s.timeUntilReset().map { "Resets in \(UsageFormat.countdown($0))" },
+                           spokenName: spoken)
     }
 
     func ringView(size: CGFloat) -> some View { SourceRing(content: self, size: size) }
@@ -417,15 +457,20 @@ private struct SourceRing: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            RingDial(percent: content.percent, isLoading: content.isLoading, title: content.title,
-                     size: size, lineWidth: size > 100 ? 11 : 9, fontSize: size * 0.25)
+            RingDial(percent: content.percent, isLoading: content.isLoading, title: content.spokenName ?? content.title,
+                     size: size, lineWidth: size > 100 ? 11 : size >= 80 ? 9 : 7, fontSize: size * 0.25)
             Text(content.title)
                 .font(.system(.callout, design: .rounded).weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .accessibilityHidden(true)
+            // Up to two lines, so "SuperGrok weekly pool" fits under four rings side by side.
             RingCaption(content: content)
                 .font(.caption2)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .contain)
     }
@@ -493,12 +538,13 @@ private struct RingDial: View {
 private struct StackedRing: View {
     @ObservedObject var store: UsageStore
     let section: DropdownSection
+    var cursorShown = true
     let now: Date
 
     var body: some View {
-        let c = RingContent.make(section, store: store)
+        let c = RingContent.make(section, store: store, cursorShown: cursorShown)
         HStack(spacing: 14) {
-            RingDial(percent: c.percent, isLoading: c.isLoading, title: c.title, size: 64, lineWidth: 8, fontSize: 17)
+            RingDial(percent: c.percent, isLoading: c.isLoading, title: c.spokenName ?? c.title, size: 64, lineWidth: 8, fontSize: 17)
             VStack(alignment: .leading, spacing: 3) {
                 Text(c.title)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
@@ -562,7 +608,7 @@ private struct HistoryPaceCard: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             if settings.showGrokHistory {
-                SourceTrend(name: "Grok", history: history, source: .grok, current: store.snapshot?.percent,
+                SourceTrend(name: "Total (whole pool)", history: history, source: .grok, current: store.snapshot?.percent,
                             knownResets: grokResets, pace: grokPace, style: settings.graphStyle, now: now)
             }
             if settings.showGrokBotHistory && store.hasGrokBot {
@@ -854,7 +900,7 @@ private struct ResetCard: View {
                 Text("—").font(.title3.bold()).foregroundStyle(.secondary)
             } else {
                 if let g = grokEnd {
-                    ResetLine(label: labelLines ? "Grok" : nil, end: g, now: now)
+                    ResetLine(label: labelLines ? "Pool" : nil, end: g, now: now)
                 }
                 if grokEnd != nil && botEnd != nil {
                     Divider()
@@ -1015,7 +1061,7 @@ private struct ProductBreakdown: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(p.name)")
-                .accessibilityValue("\(percentText(p.percent)) of the Grok pool")
+                .accessibilityValue("\(percentText(p.percent)) of the pool")
             }
         }
         .card()

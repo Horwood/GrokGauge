@@ -277,7 +277,7 @@ struct OnboardingView: View {
 
     private var rings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            para("**Grok** is your whole weekly pool across every product. **Grok Bot** is Grok Bot's usage (next card). The optional **Cursor** ring is Cursor's share of the pool.")
+            para("**Total** is your whole SuperGrok weekly pool. **Grok** (grok.com, the apps, Imagine, Voice, API), **Grok Bot** and the optional **Cursor** ring are each one's slice of it, so the three add up to the Total.")
             HStack(spacing: 10) {
                 ForEach(Array(OnboardingCopy.levelRanges(settings.thresholds).enumerated()), id: \.offset) { _, band in
                     HStack(spacing: 6) {
@@ -310,16 +310,19 @@ struct OnboardingView: View {
 
     private var sharedPool: some View {
         VStack(alignment: .leading, spacing: 12) {
-            para("Grok Bot can draw from the same weekly pool as Grok. When GrokGauge sees that (the two readings match and reset together), the Grok Bot ring shows **Grok Bot's share of the Grok pool** instead of repeating the Grok number. It's captioned “share of Grok pool”.")
-            para("Otherwise the Grok Bot ring shows Grok Bot's own weekly allowance.")
+            para("Grok, Grok Bot and Cursor all draw from one weekly pool, shown by the **Total** ring. The other rings are each one's **share of pool**: Grok Bot's and Cursor's come from xAI's usage reply, and **Grok** is what's left (Total minus Grok Bot and Cursor).")
+            para("GrokGauge spots the shared pool when Grok Bot's reading matches the Total and resets with it. If Grok Bot has its own weekly allowance instead, its ring shows that.")
             note(sharedNow, symbol: "chart.pie")
         }
     }
 
     private var sharedNow: String {
-        guard store.hasGrokBot else { return "Grok Bot isn't set up on this Mac, so you'll see the Grok ring only." }
+        guard store.hasGrokBot else { return "Grok Bot isn't set up on this Mac, so you'll see the Total and Grok rings." }
         guard let r = store.botRing else { return "Right now: waiting for Grok Bot's first reading." }
         if r.isShared {
+            if let b = store.poolBreakdown, let g = b.roundedGrok, let bot = b.grokBot {
+                return "Right now: Grok **\(g)%** + Grok Bot **\(PoolBreakdown.whole(bot))%** + Cursor **\(PoolBreakdown.whole(b.cursor))%** = Total **\(PoolBreakdown.whole(b.total))%**."
+            }
             return "Right now: Grok Bot is on the shared pool" + (r.roundedPercent.map { " and has used **\($0)%** of it." } ?? ".")
         }
         return "Right now: Grok Bot has its own weekly allowance."
@@ -335,7 +338,7 @@ struct OnboardingView: View {
                 menuBarSample
                 Spacer()
             }
-            para("Yours shows **\(MenuBarLayout.effectiveMode(settings.menuBarMode, hasGrokBot: store.hasGrokBot).title)**. You can also pick both percents (G · B), Grok only, Grok Bot only, or just the logo tinted by status, plus days until reset.")
+            para("Yours shows **\(MenuBarLayout.effectiveMode(settings.menuBarMode, hasGrokBot: store.hasGrokBot).title)**. You can also pick both percents (G · B, where G is the Total pool), Grok only (the Total), Grok Bot only, or just the logo tinted by status, plus days until reset.")
             note("Change it in **Settings › Menu Bar**\(settings.hotKey.enabled ? ". Shortcut to open the dropdown: **\(settings.hotKey.display)**" : "").", symbol: "menubar.rectangle")
         }
     }

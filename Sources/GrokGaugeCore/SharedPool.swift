@@ -112,3 +112,69 @@ public struct BotRingReading: Equatable, Sendable {
         return BotRingReading(mode: .separate, percent: bot.percent, nextReset: bot.nextReset, readAt: bot.readAt, own: bot)
     }
 }
+
+// MARK: - The pool, split by who used it (Total ring + Grok ring)
+//
+// The Total ring is the whole SuperGrok weekly pool. The Grok, Grok Bot and Cursor rings are each one's slice
+// of it, so the three slices add up to the Total. xAI's reply lists Grok Bot's and Cursor's slices as products;
+// regular Grok use (grok.com, the Grok apps, Imagine, Voice, the API…) is worked out as what's left.
+
+/// One reading of the pool split into Grok, Grok Bot and Cursor. Built by `make`, the one place every ring,
+/// the menu bar tooltip, Settings › Diagnostics, `--print-usage` and the preview/tour renders get it from.
+public struct PoolBreakdown: Equatable, Sendable {
+    /// The whole pool (the Total ring).
+    public var total: Double
+    /// Grok Bot's slice. nil while it isn't known yet (a week known to be shared, before the share arrives).
+    public var grokBot: Double?
+    /// Cursor's slice (0 when the reply doesn't list Cursor).
+    public var cursor: Double
+    /// Regular Grok use: total − Grok Bot − Cursor, clamped to 0…100. nil while a slice isn't known.
+    public var grok: Double?
+    /// False when the reply has usage but no per-product rows, so the slices can't be worked out.
+    public var productsReported: Bool
+
+    public init(total: Double, grokBot: Double?, cursor: Double, grok: Double?, productsReported: Bool) {
+        self.total = total
+        self.grokBot = grokBot
+        self.cursor = cursor
+        self.grok = grok
+        self.productsReported = productsReported
+    }
+
+    /// Splits `pool`. `bot` is the Grok Bot ring's reading: when it's on the shared pool its share is used as-is
+    /// (so the Grok Bot ring and the subtraction always agree); otherwise Grok Bot's slice is whatever the reply
+    /// lists for it (normally none). A missing Cursor or Grok Bot row means that one used none of the pool.
+    public static func make(pool: UsageSnapshot, bot: BotRingReading?) -> PoolBreakdown {
+        let total = pool.percent
+        let reported = !pool.products.isEmpty || total <= 0
+        let cursor = PoolSharing.cursorShare(in: pool)?.percent ?? 0
+        let botSlice: Double?
+        if let bot, bot.isShared {
+            botSlice = bot.percent
+        } else {
+            botSlice = PoolSharing.botShare(in: pool)?.percent ?? 0
+        }
+        var grok: Double?
+        if reported, let b = botSlice {
+            grok = min(100, max(0, total - b - cursor))
+        }
+        return PoolBreakdown(total: total, grokBot: botSlice, cursor: cursor, grok: grok, productsReported: reported)
+    }
+
+    /// Whole percent as the rings draw it.
+    public static func whole(_ p: Double) -> Int { Int(min(100, max(0, p)).rounded()) }
+
+    /// The Grok ring's whole percent: the Total's rounded number minus the other two rounded numbers, so the
+    /// three slices the user sees always add up to the Total they see (clamped at 0). nil while unknown.
+    public var roundedGrok: Int? {
+        guard grok != nil, let b = grokBot else { return nil }
+        return max(0, Self.whole(total) - Self.whole(b) - Self.whole(cursor))
+    }
+
+    /// "Grok 8% + Grok Bot 70% + Cursor 18% = Total 96%" (unknown slices as "–").
+    public var equation: String {
+        let g = roundedGrok.map { "\($0)%" } ?? "–"
+        let b = grokBot.map { "\(Self.whole($0))%" } ?? "–"
+        return "Grok \(g) + Grok Bot \(b) + Cursor \(Self.whole(cursor))% = Total \(Self.whole(total))%"
+    }
+}
