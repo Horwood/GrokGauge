@@ -1,7 +1,7 @@
 # Mirror of github.com/stevencombs/homebrew-tap/blob/main/Casks/grokgauge.rb (keep in sync).
 cask "grokgauge" do
-  version "0.9.6"
-  sha256 "22f42bc0b758e7ff9d432923a03aee28e9a84fa46ed57b5698b42b44bd78aa83"
+  version "0.9.7"
+  sha256 "a3a624632b943882ba7720b9eb280bb7fe8f3fe45c9bedc377da690529b91f0f"
 
   url "https://github.com/stevencombs/GrokGauge/releases/download/v#{version}/GrokGauge-#{version}.zip"
   name "GrokGauge"
@@ -13,6 +13,7 @@ cask "grokgauge" do
     strategy :github_latest
   end
 
+  depends_on cask: "grok-build"
   depends_on macos: :sonoma
 
   app "GrokGauge.app"
@@ -36,8 +37,11 @@ cask "grokgauge" do
     GrokGauge is ad-hoc signed, not notarized by Apple. This cask removed the
     download quarantine flag from #{appdir}/GrokGauge.app so it opens normally.
 
-    GrokGauge reads the login created by the Grok CLI. If you haven't already:
+    The Grok CLI (the grok-build cask) was installed with GrokGauge. GrokGauge
+    reads the CLI's login, so sign in once if you haven't already:
       grok login
+    (If "grok" isn't found, open a new Terminal window.) A copy from xAI's own
+    installer in ~/.grok can stay; both share the same login.
 
     Grok Bot usage appears automatically if the Grok Bot app is installed.
   EOS
