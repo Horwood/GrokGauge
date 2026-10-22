@@ -1,7 +1,7 @@
 # Mirror of github.com/stevencombs/homebrew-tap/blob/main/Casks/grokgauge.rb (keep in sync).
 cask "grokgauge" do
-  version "0.9.5"
-  sha256 "5e10c22b969aa713c22bbd8cfcb7cbd7d86877293bf5c17b82ad7a5e2240d4c4"
+  version "0.9.6"
+  sha256 "22f42bc0b758e7ff9d432923a03aee28e9a84fa46ed57b5698b42b44bd78aa83"
 
   url "https://github.com/stevencombs/GrokGauge/releases/download/v#{version}/GrokGauge-#{version}.zip"
   name "GrokGauge"
