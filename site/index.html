@@ -51,7 +51,7 @@
   <div class="glow" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow"><span class="dot"></span>v0.9.5 · Free &amp; open source · macOS 14+</p>
+      <p class="eyebrow"><span class="dot"></span>v0.9.6 · Free &amp; open source · macOS 14+</p>
       <h1>Know your Grok limits <span class="grad">at a glance.</span></h1>
       <p class="lede">GrokGauge lives in your Mac's menu bar and shows your weekly SuperGrok usage as rings that turn green, orange and red, so the weekly limit never sneaks up on you.</p>
 
@@ -74,14 +74,14 @@
     <figure class="hero-shot">
       <picture>
         <source srcset="assets/popover-light.png" media="(prefers-color-scheme: light)">
-        <img src="assets/popover-dark.png" width="320" height="1126" alt="The GrokGauge dropdown: Grok ring at 42% of the SuperGrok weekly pool and Grok Bot at 27% share of the pool, service status, a 7-day history graph with pace, reset countdown and Grok pool by product">
+        <img src="assets/popover-dark.png" width="392" height="1116" alt="The GrokGauge dropdown: the Total ring at 42% of the SuperGrok weekly pool, Grok at 14% and Grok Bot at 27% share of pool, service status, a 7-day history graph with pace, reset countdown and Grok pool by product">
       </picture>
-      <figcaption>GrokGauge 0.9.5, shown with example data</figcaption>
+      <figcaption>GrokGauge 0.9.6, shown with example data</figcaption>
     </figure>
   </div>
 
   <div class="wrap menubar-strip">
-    <figure class="mb-fig"><img src="assets/menubar.png" width="139" height="30" alt="GrokGauge in the menu bar: the gauge glyph, G 42% for the Grok pool and B 27% for Grok Bot's share of it"><figcaption>Menu bar, both numbers (0.9.5, example data)</figcaption></figure>
+    <figure class="mb-fig"><img src="assets/menubar.png" width="139" height="30" alt="GrokGauge in the menu bar: the gauge glyph, G 42% for the Total pool and B 27% for Grok Bot's share of it"><figcaption>Menu bar, both numbers (0.9.6, example data)</figcaption></figure>
     <p>Lives in your menu bar. Pick your style: the higher percent, both numbers, days to reset, or just a tinted logo.</p>
   </div>
 </section>
@@ -113,7 +113,7 @@
       <figure class="card fig">
         <div class="shot shot-tour"><picture>
           <source srcset="assets/tour-rings-light.png" media="(prefers-color-scheme: light)">
-          <img src="assets/tour-rings-dark.png" width="500" height="440" loading="lazy" alt="The rings: what Grok, Grok Bot and Cursor mean, with your own color levels and reset time">
+          <img src="assets/tour-rings-dark.png" width="500" height="440" loading="lazy" alt="The rings: Total is your whole weekly pool, and Grok, Grok Bot and Cursor are each one's slice of it, with your own color levels and reset time">
         </picture></div>
         <figcaption><strong>3 · The rings</strong> · your colors and levels</figcaption>
       </figure>
@@ -146,9 +146,9 @@
 
     <div class="grid feat-shots">
       <article class="card shot-card f-hist">
-        <div class="shot"><img src="assets/crop-history.png" alt="7-day history bars for Grok and Grok Bot, with 'On track (≈59% at reset)'"></div>
+        <div class="shot"><img src="assets/crop-history.png" alt="7-day history bars for the Total and Grok Bot, with 'On track (≈70% at reset)'"></div>
         <h3>Pace &amp; 7-day history</h3>
-        <p>A bar, line or area graph for each ring, plus a projection: “On track (≈59% at reset)” or “At this pace you'll hit 100% by Fri 3 PM.”</p>
+        <p>A bar, line or area graph for each ring, plus a projection: “On track (≈70% at reset)” or “At this pace you'll hit 100% by Fri 3 PM.”</p>
       </article>
       <article class="card shot-card f-prod">
         <div class="shot"><img src="assets/crop-products.png" alt="Grok pool by product: Chat, Imagine, Voice, Build, API, Grok Bot and Cursor"></div>
@@ -156,7 +156,7 @@
         <p>See what's eating your pool: Chat, Imagine, Voice, Build, API, Grok Bot and Cursor. Pick which ones show and how they're sorted.</p>
       </article>
       <article class="card shot-card">
-        <div class="shot"><img src="assets/crop-resets.png" alt="Resets in 2 days, Thu Oct 22 at 3:55 AM"></div>
+        <div class="shot"><img src="assets/crop-resets.png" alt="Resets in 2 days, Sat, Oct 24 at 3:44 PM"></div>
         <h3>Reset countdown</h3>
         <p>Days to reset, a live countdown and the exact reset time in your time zone.</p>
       </article>
@@ -181,7 +181,7 @@
         <p>Jump straight to Grok, Grok Bot or X from the dropdown.</p>
       </article>
       <article class="card shot-card">
-        <div class="shot shot-split"><img src="assets/rings-light-dark.png" alt="The Grok and Grok Bot rings in light mode and in dark mode (0.9.5, example data)"></div>
+        <div class="shot shot-split"><img src="assets/rings-light-dark.png" alt="The Total, Grok and Grok Bot rings in light mode and in dark mode (0.9.6, example data)"></div>
         <h3>Light &amp; dark</h3>
         <p>Follows your Mac's appearance, with a colorblind-friendly color preset too.</p>
       </article>
@@ -222,28 +222,29 @@
   <div class="wrap">
     <header class="sec-head">
       <p class="kicker">The rings</p>
-      <h2>Up to three rings. One weekly pool.</h2>
-      <p>Each ring turns <span class="c-g">green</span>, <span class="c-o">orange</span> and <span class="c-r">red</span> at levels you choose.</p>
+      <h2>Up to four rings. One weekly pool.</h2>
+      <p>Total is your whole pool. Grok, Grok Bot and Cursor are each one's <strong>share of pool</strong>, so the slices add up to the Total (14% + 27% + 1% = 42%). Each ring turns <span class="c-g">green</span>, <span class="c-o">orange</span> and <span class="c-r">red</span> at levels you choose.</p>
     </header>
 
     <div class="ring-explain">
-      <div class="ring-key"><span class="k k-g"></span><div><h4>Grok</h4><p>Your whole SuperGrok weekly pool: Chat, Imagine, Voice, Build, the API and more.</p></div></div>
-      <div class="ring-key"><span class="k k-o"></span><div><h4>Grok Bot</h4><p>Grok Bot's share of that pool when the two share one, or its own weekly allowance when it has one.</p></div></div>
+      <div class="ring-key"><span class="k k-t"></span><div><h4>Total</h4><p>Your whole SuperGrok weekly pool: everything below added up.</p></div></div>
+      <div class="ring-key"><span class="k k-g"></span><div><h4>Grok</h4><p>Regular Grok use (grok.com, the Grok apps, Imagine, Voice, the API): the Total minus Grok Bot and Cursor.</p></div></div>
+      <div class="ring-key"><span class="k k-o"></span><div><h4>Grok Bot</h4><p>Grok Bot's share of the pool when the two share one, or its own weekly allowance when it has one.</p></div></div>
       <div class="ring-key"><span class="k k-b"></span><div><h4>Cursor <em>optional</em></h4><p>Cursor's share of the pool, when xAI's usage data lists it. No Cursor sign-in needed.</p></div></div>
     </div>
 
     <div class="grid ring-shots">
       <figure class="card fig">
-        <div class="shot"><img src="assets/rings-two.png" alt="Two rings: Grok 42% and Grok Bot 27% share of Grok pool"></div>
-        <figcaption><strong>Two rings</strong> · the default (0.9.5)</figcaption>
+        <div class="shot"><img src="assets/rings-default.png" alt="Three rings: Total 42%, Grok 14% and Grok Bot 27% share of pool"></div>
+        <figcaption><strong>Three rings</strong> · the default (0.9.6)</figcaption>
       </figure>
       <figure class="card fig">
-        <div class="shot"><img src="assets/rings-three-fit.png" alt="Three rings fit to the standard width: Grok 42%, Grok Bot 27%, Cursor 1%"></div>
-        <figcaption><strong>Three rings, fit to width</strong> · same window, smaller rings (0.9.5)</figcaption>
+        <div class="shot"><img src="assets/rings-four-fit.png" alt="Four rings shrunk to fit the usual width: Total 42%, Grok 14%, Grok Bot 27%, Cursor 1%"></div>
+        <figcaption><strong>Four rings, fit to width</strong> · usual window, smaller rings (0.9.6)</figcaption>
       </figure>
       <figure class="card fig">
-        <div class="shot"><img src="assets/rings-three-keep.png" alt="Three rings at full size in a wider window: Grok 42%, Grok Bot 27%, Cursor 1%"></div>
-        <figcaption><strong>Three rings, keep size</strong> · wider window (0.9.5)</figcaption>
+        <div class="shot"><img src="assets/rings-four-keep.png" alt="Four rings at full size in a wider window: Total 42%, Grok 14%, Grok Bot 27%, Cursor 1%"></div>
+        <figcaption><strong>Four rings, keep size</strong> · wider window (0.9.6)</figcaption>
       </figure>
     </div>
   </div>
@@ -307,7 +308,7 @@
         <ul class="reqs">
           <li>macOS 14 Sonoma or later (Apple silicon or Intel)</li>
           <li>A SuperGrok subscription</li>
-          <li>The Grok CLI, signed in once (needed for the Grok ring)</li>
+          <li>The Grok CLI, signed in once (needed for the Total and Grok rings)</li>
           <li><em>Optional:</em> the Grok Bot app, for the Grok Bot ring</li>
           <li><em>Optional:</em> Homebrew, for the one-line install</li>
         </ul>
@@ -351,7 +352,7 @@
     </details>
     <details>
       <summary>Do I need Grok Bot or Cursor?</summary>
-      <p>No. The Grok ring only needs the Grok CLI. The Grok Bot ring appears when the Grok Bot app is installed, and the Cursor ring is an optional setting.</p>
+      <p>No. The Total and Grok rings only need the Grok CLI. The Grok Bot ring appears when the Grok Bot app is installed, and the Cursor ring is an optional setting.</p>
     </details>
     <details>
       <summary>I use several Macs. Does it keep up?</summary>

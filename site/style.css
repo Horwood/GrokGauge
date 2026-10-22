@@ -119,9 +119,10 @@ h1 { font-size: clamp(40px, 6vw, 68px); font-weight: 800; letter-spacing: -.035e
 
 /* rings */
 .c-g { color: var(--green); font-weight: 700; } .c-o { color: var(--orange); font-weight: 700; } .c-r { color: var(--red); font-weight: 700; }
-.ring-explain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-bottom: 40px; }
+.ring-explain { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-bottom: 40px; }
 .ring-key { display: flex; gap: 14px; }
 .k { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 5px solid; margin-top: 2px; }
+.k-t { border-color: var(--green); }
 .k-g { border-color: var(--green); border-right-color: color-mix(in srgb, var(--green) 25%, transparent); }
 .k-o { border-color: var(--orange); border-bottom-color: color-mix(in srgb, var(--orange) 25%, transparent); }
 .k-b { border-color: var(--muted); border-left-color: color-mix(in srgb, var(--muted) 25%, transparent); border-top-color: color-mix(in srgb, var(--muted) 25%, transparent); }

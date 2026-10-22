@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (42%), both percents (G 42% · B 27%, Grok Bot's share of the pool), percent with days to reset (42% · 2d), the logo alone tinted green, and a red 95%">
+  <img src="docs/menubar-demo.png" width="560" alt="GrokGauge menu bar styles: the higher percent (42%), both percents (G 42% for the Total · B 27%, Grok Bot's share of the pool), percent with days to reset (42% · 2d), the logo alone tinted green, and a red 95%">
 </p>
 
 <p align="center"><b>🌐 <a href="https://stevencombs.github.io/GrokGauge/">Visit the GrokGauge page →</a></b></p>
@@ -35,7 +35,7 @@ brew update && brew upgrade --cask grokgauge
 
 This installs **GrokGauge.app** into `/Applications`. Remove it with `brew uninstall --cask grokgauge`
 (add `--zap` to also delete its preferences). No Homebrew? See [Manual](#manual) install. You'll also want the
-[Grok CLI](#requirements) signed in for the Grok ring.
+[Grok CLI](#requirements) signed in for the Total and Grok rings.
 
 GrokGauge is ad-hoc signed, not notarized by Apple. So that macOS doesn't block the first launch,
 the cask ([stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap)) removes the
@@ -46,33 +46,39 @@ download quarantine flag from `GrokGauge.app`, and only that app, right after in
 > "Grok" and "SuperGrok" are trademarks of xAI. GrokGauge reads undocumented data sources that
 > can change without notice.
 
-> **New in 0.9.5:** a friendly [welcome tour](#welcome-tour) the first time GrokGauge opens, a simpler
-> [one-folder Sync tab](#using-it-on-several-macs), and the menu bar's **B** always shows Grok Bot's share of
-> the shared pool (the same number as its ring). See [CHANGELOG.md](CHANGELOG.md).
+> **New in 0.9.6:** a **Total** ring for your whole SuperGrok weekly pool plus a separate **Grok** ring for
+> regular Grok use, so Grok, Grok Bot and Cursor each show their **share of pool** and add up to the Total
+> (for example 14% + 27% + 1% = 42%). The days left in the menu bar (`42% · 2d`) is easier to read.
+> See [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
-GrokGauge tracks two weekly limits side by side:
+GrokGauge tracks your weekly limits side by side:
 
-- **Grok.** SuperGrok plans share **one usage pool** across Chat, Imagine, Voice, Build, and the
-  API. It resets **every 7 days** on your account's own schedule.
+- **Total.** SuperGrok plans share **one usage pool** across Chat, Imagine, Voice, Build, the API, Grok Bot
+  and Cursor. The **Total** ring shows that whole pool. It resets **every 7 days** on your account's own schedule.
+- **Grok.** Your regular Grok use (grok.com, the Grok apps, Imagine, Voice, the API): the Total minus
+  Grok Bot's and Cursor's shares, captioned "share of pool".
 - **Grok Bot.** If you use the [Grok Bot](https://cursor.com/bot) desktop app, its **weekly usage**
   (the number on Grok Bot's *Settings › Usage & Billing* screen) has its own limit and its own reset time.
   When Grok Bot's reading instead describes your shared SuperGrok pool (same reset minute, about the same
-  percent as Grok), GrokGauge notices and the Grok Bot ring shows **Grok Bot's share of that pool**, labeled
-  "share of Grok pool", so you don't see the same number twice. If the two separate again, the ring goes back
+  percent as the Total), GrokGauge notices and the Grok Bot ring shows **Grok Bot's share of that pool**, labeled
+  "share of pool", so you don't see the same number twice. If the two separate again, the ring goes back
   to Grok Bot's own allowance on its own.
+
+Grok, Grok Bot and the optional Cursor ring are each one's slice of the pool, so together they add up to the
+Total: with the sample data in the screenshots, Grok 14% + Grok Bot 27% + Cursor 1% = Total 42%.
 
 Features:
 
 - **Menu bar meter.** A small Grok-style glyph plus a percent, color-coded **green** up to 80%,
   **orange** from 81–90%, and **red** above 90% (levels and colors are yours to change). Show the
-  **higher** of the two numbers, **both** (`G 42% · B 27%`), just one source, or only the logo tinted
+  **higher** of the two numbers, **both** (`G 42% · B 27%`: G is the Total, B is Grok Bot), just one source, or only the logo tinted
   by status. Optionally add the days to reset (`10% · 5d`) or hide the logo.
-- **Ring gauges** for Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
-  An optional third **Cursor ring** (off by default) shows the "Cursor" share of your Grok pool when xAI's
-  usage reply lists it; it needs no Cursor sign-in. With three rings side by side, keep the rings their usual
-  size (the dropdown gets a little wider) or shrink them to fit the usual width.
+- **Ring gauges** for Total, Grok and Grok Bot: side by side, stacked, or one combined ring showing the higher.
+  An optional fourth **Cursor ring** (off by default) shows Cursor's share of the pool when xAI's
+  usage reply lists it; it needs no Cursor sign-in. With three or four rings side by side, keep the rings their
+  usual size (the dropdown gets a little wider) or shrink them to fit the usual width.
 - **History & pace.** A 7-day graph for each source: one bar per day with the highest % reached that day
   (or a line or area graph, your pick), plus a projection: "On track (≈40% at reset)"
   or "At this pace you'll hit 100% by Fri 3 PM". With a sync folder, the graphs combine readings
@@ -86,7 +92,7 @@ Features:
   details and the last check time, and clicking a row opens that status page. Checked about every 5 minutes
   and when you open the dropdown. Optional notification (off by default) when a service goes from normal to
   an outage.
-- **Per-product breakdown** of the Grok pool: Chat, Imagine, Voice, Build, and API.
+- **Per-product breakdown** of the pool: Chat, Imagine, Voice, Build, and API.
 - **Extra Usage Credits.** Your prepaid Grok credit balance (and on-demand spend, if you've enabled it).
 - **Heads-up notifications** when Grok or Grok Bot enters the warning and critical levels, once per week for each.
 - **Refresh now**, last-updated time, automatic refresh every 5–60 minutes, and smart retries
@@ -111,7 +117,7 @@ Features:
   &nbsp;&nbsp;
   <img src="docs/popover-light-demo.png" width="300" alt="GrokGauge dropdown, light mode">
 </p>
-<p align="center"><sub>Screenshots use sample data (Grok pool 42%, Grok Bot's share 27%).</sub></p>
+<p align="center"><sub>Screenshots use sample data (Total 42% = Grok 14% + Grok Bot 27% + Cursor 1%).</sub></p>
 
 <p align="center">
   <img src="docs/popover-stacked-colorblind-dark-demo.png" width="250" alt="Stacked rings with the colorblind-friendly palette">
@@ -142,15 +148,17 @@ Features:
 <p align="center"><sub>The service status row during an incident (example data; normally both dots are green).</sub></p>
 
 <p align="center">
-  <img src="docs/popover-three-rings-keepSize-dark-demo.png" width="360" alt="Three rings side by side: Grok 42%, Grok Bot 27% and the optional Cursor ring at 1%, captioned share of Grok pool">
+  <img src="docs/popover-four-rings-keepSize-dark-demo.png" width="320" alt="Four rings side by side: Total 42%, Grok 14%, Grok Bot 27% and the optional Cursor ring at 1%, each slice captioned share of pool">
+  &nbsp;
+  <img src="docs/popover-four-rings-fitWidth-light-demo.png" width="246" alt="Four rings shrunk to fit the usual width, light mode">
 </p>
-<p align="center"><sub>The optional Cursor ring (sample data), with "Keep ring size" on.</sub></p>
+<p align="center"><sub>Four rings with the optional Cursor ring on (sample data): "Keep ring size" · "Shrink rings to fit".</sub></p>
 
 ## Requirements
 
 - macOS 14 Sonoma or later
 - A SuperGrok subscription
-- The **Grok CLI** (Grok Build), signed in once. It's needed only for the **Grok** ring; the
+- The **Grok CLI** (Grok Build), signed in once. It's needed for the **Total** and **Grok** rings; the
   **Grok Bot** ring works without it. If you don't have it yet, install it with xAI's official installer:
 
   ```sh
@@ -224,9 +232,9 @@ you through it in 8 short cards:
 1. **Welcome.** What GrokGauge is, and that it's unofficial and not affiliated with xAI.
 2. **Connect.** Checks for the Grok CLI sign-in on this Mac and shows a green check, or the install and
    `grok login` steps with copy buttons and **Check Again**.
-3. **The rings.** What each ring means, with *your* color levels (for example 0–80%, 81–90%, above 90%)
+3. **The rings.** What each ring means (Total, Grok, Grok Bot and the optional Cursor ring), with *your* color levels (for example 0–80%, 81–90%, above 90%)
    and when your pool resets.
-4. **The shared pool.** Why the Grok Bot ring can show Grok Bot's share of the Grok pool.
+4. **The shared pool.** How Grok, Grok Bot and Cursor each show their share of the pool and add up to the Total.
 5. **In your menu bar.** What the menu bar number shows (a live example in your current style) and where
    to change it.
 6. **Settings & sync.** Colors & Alerts, Layout (including the optional Cursor ring) and the one-folder Sync.
@@ -256,10 +264,10 @@ Everything applies immediately.
 | <img src="docs/prefs-whatsNew-demo.png" width="400" alt="What's New tab"> | <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> |
 | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> | |
 
-- **Layout.** Check or uncheck each dropdown section (Grok ring, Grok Bot ring, Cursor ring, service status, history & pace,
+- **Layout.** Check or uncheck each dropdown section (Total ring, Grok ring, Grok Bot ring, Cursor ring, service status, history & pace,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
   rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
-  choose whether the Grok, Grok Bot and Cursor graphs appear (the Cursor graph only while the Cursor ring is
+  choose whether the Total, Grok Bot and Cursor graphs appear (the Cursor graph only while the Cursor ring is
   on; turning them all off hides the section) and pick the
   **Graph style**: Bars (one bar per day, the default), Line, or Area. Under **Grok by product**, check
   which products appear (Chat, Imagine, Voice, Build, API, plus any product xAI adds later, which shows up
@@ -267,7 +275,7 @@ Everything applies immediately.
   your order) or Alphabetical; unchecking them all hides the section. Under **Service status**, choose
   the **xAI** and **Cursor** dots (both on by default; turning both off hides the row) and the optional
   outage notification. Under **Rings**, pick the ring style, switch the Cursor ring on, and choose
-  **With three rings**: keep ring size or shrink to fit. Then
+  **With three or four rings**: keep ring size or shrink to fit. Then
   choose which action buttons appear and in what order. **Reset Layout to Default** undoes it all.
 - **Menu Bar.** Higher percent, both (`G · B`), Grok only, Grok Bot only, or the logo alone tinted
   green/orange/red. Optional days-to-reset suffix and a hide-the-logo switch, with a live preview.

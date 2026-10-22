@@ -16,6 +16,10 @@ promised date.
 
 ## Recently shipped
 
+**0.9.6:** a Total ring for the whole SuperGrok weekly pool and a separate Grok ring for regular Grok use, so
+Grok, Grok Bot and Cursor each show their share of pool and add up to the Total (four rings fit in one row),
+and easier-to-read days left in the menu bar.
+
 **0.9.5:** a welcome tour the first time GrokGauge opens (replay it from the gear menu), a simpler Sync tab
 with one folder that every Mac ends up sharing, the new retroCombs logo, the menu bar's B always showing Grok
 Bot's share of the shared pool, and macOS 27 cleanup.

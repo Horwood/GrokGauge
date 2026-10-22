@@ -5,6 +5,8 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-10-21
+
 ### Changed
 - **A Total ring and a separate Grok ring.** The first ring is now **Total**, your whole SuperGrok weekly pool
   (it used to be called Grok, which made Grok Bot look like it used less than Grok). A new **Grok** ring next to
@@ -272,6 +274,8 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
+[Unreleased]: https://github.com/stevencombs/GrokGauge/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/stevencombs/GrokGauge/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/stevencombs/GrokGauge/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/stevencombs/GrokGauge/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/stevencombs/GrokGauge/compare/v0.9.2...v0.9.3
