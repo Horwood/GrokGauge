@@ -248,7 +248,7 @@ struct OnboardingView: View {
         case .signedOut:
             return (false, "Sign in to Grok", "The Grok CLI is installed. Run “grok login” in Terminal; GrokGauge notices when it finishes.")
         case .notInstalled:
-            return (false, "Install the Grok CLI", "Install it with xAI's installer, then run “grok login”. The dropdown walks you through it too.")
+            return (false, "Install the Grok CLI", "Install it with “\(GrokCLISetup.installCommand)”, then run “grok login”. The dropdown walks you through it too.")
         }
     }
 

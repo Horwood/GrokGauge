@@ -5,6 +5,25 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-10-22
+
+### Changed
+- **The Homebrew install now installs the Grok CLI too.** The cask depends on Homebrew's `grok-build` cask
+  (the Grok CLI, downloaded from x.ai), so `brew install --cask stevencombs/tap/grokgauge` sets up both; just run
+  `grok login` once. xAI's curl installer still works as an alternative, and having both copies is harmless
+  (they share the login in `~/.grok`).
+- **GrokGauge finds Homebrew's Grok CLI.** Besides `~/.grok/bin/grok`, it recognizes the `grok-build` copy at
+  `/opt/homebrew/bin/grok` or `/usr/local/bin/grok` (or, if that name is taken, inside
+  `Caskroom/grok-build/<version>/`), reads its version from where the link points (it never runs the CLI), and
+  ignores Homebrew's unrelated `grok` regex formula.
+- **The right update command.** What's new suggests `brew upgrade --cask grok-build` for Homebrew's copy and
+  `grok update` for the installer's copy.
+- **Setup suggests Homebrew first.** When the CLI is missing and Homebrew is installed, the dropdown, welcome
+  tour, Settings and **Install in Terminal…** use `brew install --cask grok-build` (xAI's installer is shown as the
+  alternative, and is used when there's no Homebrew). GrokGauge still never installs anything or signs in on its
+  own. Settings › Diagnostics shows how the CLI was installed and its version.
+- README and the GrokGauge page: the install sections say the Homebrew command installs the Grok CLI too.
+
 ## [0.9.6] - 2026-10-21
 
 ### Changed
@@ -274,7 +293,8 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
-[Unreleased]: https://github.com/stevencombs/GrokGauge/compare/v0.9.6...HEAD
+[Unreleased]: https://github.com/stevencombs/GrokGauge/compare/v0.9.7...HEAD
+[0.9.7]: https://github.com/stevencombs/GrokGauge/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/stevencombs/GrokGauge/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/stevencombs/GrokGauge/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/stevencombs/GrokGauge/compare/v0.9.3...v0.9.4

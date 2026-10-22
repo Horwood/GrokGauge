@@ -692,12 +692,16 @@ struct DiagnosticsTab: View {
                 Button("Install in Terminal…") { Launcher.installCLIInTerminal() }
             }
         case .signedOut:
-            PrefRow(label: "Grok CLI", detail: "Installed, not signed in. Run “grok login” (or “\(GrokCLISetup.fallbackLoginCommand)”).") {
+            PrefRow(label: "Grok CLI", detail: store.cli()?.kind == .installer
+                    ? "Installed, not signed in. Run “grok login” (or “\(GrokCLISetup.fallbackLoginCommand)”)."
+                    : "Installed, not signed in. Run “grok login” in Terminal.") {
                 Button("Copy “grok login”") { Launcher.copyLoginCommand() }
                 Button("Open Terminal") { Launcher.openTerminal() }
             }
         case .signedIn:
-            PrefRow(label: "Grok CLI") { Text("Signed in").foregroundStyle(.secondary) }
+            PrefRow(label: "Grok CLI") {
+                Text("Signed in\(store.cli().map { " · \($0.summary)" } ?? "")").foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -748,7 +752,7 @@ enum Diagnostics {
             "Refresh: \(settings.refreshInterval.title)",
             "Shortcut: \(settings.hotKey.enabled ? settings.hotKey.display : "off")",
             "Update check: \(settings.checkForUpdates ? "on" : "off")",
-            "Grok CLI: \(store.cliState().summary)",
+            "Grok CLI: \(store.cliState().summary)\(store.cli().map { " (\($0.summary))" } ?? "")",
             "Service status: \(settings.showsServiceStatus ? settings.serviceStatus.enabled.map(\.title).joined(separator: ", ") : "off")\(settings.serviceStatus.notify ? ", notify on" : "")",
             "What's new: \(settings.showsWhatsNewSection ? "shown" : "hidden"), \(settings.whatsNew.interval.rawValue)h, notify \(settings.whatsNew.notify ? "on" : "off")",
         ]

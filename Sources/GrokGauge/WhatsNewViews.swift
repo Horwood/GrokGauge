@@ -211,7 +211,7 @@ struct WhatsNewPrefs: View {
                 }
             }
             PrefGroup(title: "Checking & notifications",
-                      footer: "No login or API key. GrokGauge asks x.ai, docs.x.ai, storage.googleapis.com (Grok CLI mirror) and itunes.apple.com, identifying itself as “GrokGauge/\(AppInfo.version) (macOS menu bar)”. The Grok CLI version and Grok Bot's version are read from files on this Mac. GrokGauge never installs anything: for the CLI it gives you the `grok update` command to copy.") {
+                      footer: "No login or API key. GrokGauge asks x.ai, docs.x.ai, storage.googleapis.com (Grok CLI mirror) and itunes.apple.com, identifying itself as “GrokGauge/\(AppInfo.version) (macOS menu bar)”. The Grok CLI version and Grok Bot's version are read from files on this Mac. GrokGauge never installs anything: for the CLI it gives you the update command to copy (`grok update`, or `brew upgrade --cask grok-build` for Homebrew's copy).") {
                 PrefRow(label: "Check for news", detail: "The Grok CLI is checked every 2 hours") {
                     Picker("", selection: $settings.whatsNew.interval) {
                         ForEach(WhatsNewInterval.allCases) { Text($0.title).tag($0) }

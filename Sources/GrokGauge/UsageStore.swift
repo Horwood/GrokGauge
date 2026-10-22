@@ -31,12 +31,12 @@ enum UsageProblem: Equatable {
     var detail: String {
         switch self {
         case .cliNotInstalled:
-            return "GrokGauge reads your Grok usage through the Grok CLI's sign-in. Install the CLI with xAI's "
-                + "installer, then run `grok login` (in a new Terminal window, or `~/.grok/bin/grok login`). "
+            return "GrokGauge reads your Grok usage through the Grok CLI's sign-in. Install the CLI with Homebrew "
+                + "(`brew install --cask grok-build`) or xAI's installer, then run `grok login` in a new Terminal window. "
                 + "The Grok Bot ring works without it."
         case .signedOut:
             return "Run `grok login` in Terminal. If it says “command not found”, open a new Terminal window "
-                + "or run `~/.grok/bin/grok login`. GrokGauge notices the sign-in automatically."
+                + "(or, if you used xAI's installer, run `~/.grok/bin/grok login`). GrokGauge notices the sign-in automatically."
         case .expired: return "GrokGauge couldn't renew it automatically. Run `grok login` to reconnect, then click Refresh."
         case .network: return "GrokGauge will retry automatically."
         case .server(_, let message?):
@@ -369,6 +369,11 @@ final class UsageStore: ObservableObject {
     func cliState() -> GrokCLIState {
         GrokCLISetup.state(cliPath: GrokCLISetup.findCLI(shellPATH: shellPATH),
                            hasUsableLogin: GrokCLISetup.hasUsableLogin())
+    }
+
+    /// The Grok CLI found on this Mac (path, how it was installed, version), for Diagnostics.
+    func cli() -> GrokCLI? {
+        GrokCLISetup.locate(shellPATH: shellPATH)
     }
 
     /// Every few seconds while setup is needed: refresh as soon as `auth.json` appears or changes,

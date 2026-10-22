@@ -75,13 +75,17 @@ public struct WhatsNewFetcher: Sendable {
     public let http: NewsHTTP
     public let userAgent: String
     public var grokHome: URL
+    /// Where to look for Homebrew's `grok-build` copy of the CLI.
+    public var homebrewPrefixes: [String]
     public var grokBotApps: [URL]
 
     public init(appVersion: String, http: NewsHTTP = URLSessionNewsHTTP(),
-                grokHome: URL = GrokCLIVersion.defaultHome, grokBotApps: [URL] = GrokBotMacApp.candidates) {
+                grokHome: URL = GrokCLIVersion.defaultHome, homebrewPrefixes: [String] = GrokCLISetup.homebrewPrefixes,
+                grokBotApps: [URL] = GrokBotMacApp.candidates) {
         self.http = http
         self.userAgent = "GrokGauge/\(appVersion) (macOS menu bar)"
         self.grokHome = grokHome
+        self.homebrewPrefixes = homebrewPrefixes
         self.grokBotApps = grokBotApps
     }
 
@@ -165,7 +169,8 @@ public struct WhatsNewFetcher: Sendable {
     }
 
     func fetchCLI(state st: NewsSourceState) async throws -> NewsFetchResult {
-        guard let installed = GrokCLIVersion.installed(grokHome: grokHome) else { throw NewsFetchError.notInstalled }
+        guard let cli = GrokCLIVersion.installedCLI(grokHome: grokHome, homebrewPrefixes: homebrewPrefixes),
+              let installed = cli.version else { throw NewsFetchError.notInstalled }
         var lastError = NewsFetchError.unreadable
         for (i, url) in GrokCLIVersion.pointerURLs.enumerated() {
             do {
@@ -176,7 +181,8 @@ public struct WhatsNewFetcher: Sendable {
                     return NewsFetchResult(items: nil, etag: st.etag, lastModified: st.lastModified, note: "installed \(installed)")
                 }
                 guard let latest = GrokCLIVersion.parsePointer(data) else { throw NewsFetchError.unreadable }
-                let item = GrokCLIVersion.item(latest: latest, installed: installed, published: published)
+                let item = GrokCLIVersion.item(latest: latest, installed: installed, published: published,
+                                                    updateCommand: cli.updateCommand)
                 return NewsFetchResult(items: item.map { [$0] } ?? [],
                                        etag: i == 0 ? resp.value(forHTTPHeaderField: "ETag") : nil,
                                        lastModified: i == 0 ? resp.value(forHTTPHeaderField: "Last-Modified") : nil,

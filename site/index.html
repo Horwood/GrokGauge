@@ -51,7 +51,7 @@
   <div class="glow" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow"><span class="dot"></span>v0.9.6 · Free &amp; open source · macOS 14+</p>
+      <p class="eyebrow"><span class="dot"></span>v0.9.7 · Free &amp; open source · macOS 14+</p>
       <h1>Know your Grok limits <span class="grad">at a glance.</span></h1>
       <p class="lede">GrokGauge lives in your Mac's menu bar and shows your weekly SuperGrok usage as rings that turn green, orange and red, so the weekly limit never sneaks up on you.</p>
 
@@ -60,6 +60,7 @@
         <code id="brew-cmd">brew install --cask stevencombs/tap/grokgauge</code>
         <button class="copy" type="button" data-copy="brew install --cask stevencombs/tap/grokgauge" aria-label="Copy install command">Copy</button>
       </div>
+      <p class="fine" style="margin-top:10px">Installs the Grok CLI too. Then run <code>grok login</code> once.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="https://github.com/stevencombs/GrokGauge/releases/latest">
@@ -168,7 +169,7 @@
       <article class="card shot-card">
         <div class="shot"><img src="assets/crop-whatsnew.png" alt="What's new from xAI: app updates and a Grok CLI update with a copyable 'grok update' command"></div>
         <h3>What's new from xAI</h3>
-        <p>New Grok app releases, xAI news and Grok CLI updates, with the <code>grok update</code> command ready to copy.</p>
+        <p>New Grok app releases, xAI news and Grok CLI updates, with the update command (<code>brew upgrade --cask grok-build</code> or <code>grok update</code>) ready to copy.</p>
       </article>
       <article class="card shot-card">
         <div class="shot"><img src="assets/crop-credits.png" alt="Extra Usage Credits balance"></div>
@@ -260,7 +261,7 @@
     </header>
 
     <ol class="steps">
-      <li><span class="n">1</span><h3>Install</h3><p>One Homebrew command, or drag the app from GitHub Releases into Applications.</p></li>
+      <li><span class="n">1</span><h3>Install</h3><p>One Homebrew command installs GrokGauge and the Grok CLI. Or drag the app from GitHub Releases into Applications.</p></li>
       <li><span class="n">2</span><h3>Sign in to the Grok CLI</h3><p>Run <code>grok login</code> once. GrokGauge reads that login from <code>~/.grok/auth.json</code> and keeps it renewed, just like the CLI does.</p></li>
       <li><span class="n">3</span><h3>Glance</h3><p>Your usage appears in the menu bar and refreshes on its own every 5 to 60 minutes.</p></li>
     </ol>
@@ -294,7 +295,7 @@
           <code>brew install --cask stevencombs/tap/grokgauge</code>
           <button class="copy" type="button" data-copy="brew install --cask stevencombs/tap/grokgauge" aria-label="Copy install command">Copy</button>
         </div>
-        <p>Update later with <code>brew upgrade --cask grokgauge</code>.</p>
+        <p>Also installs the Grok CLI (Homebrew's <code>grok-build</code> cask, downloaded from x.ai). Then run <code>grok login</code> once. Update later with <code>brew upgrade --cask grokgauge</code>.</p>
       </div>
       <div class="card">
         <span class="tag tag-muted">Direct download</span>
@@ -308,7 +309,7 @@
         <ul class="reqs">
           <li>macOS 14 Sonoma or later (Apple silicon or Intel)</li>
           <li>A SuperGrok subscription</li>
-          <li>The Grok CLI, signed in once (needed for the Total and Grok rings)</li>
+          <li>The Grok CLI, signed in once (needed for the Total and Grok rings; the Homebrew install includes it)</li>
           <li><em>Optional:</em> the Grok Bot app, for the Grok Bot ring</li>
           <li><em>Optional:</em> Homebrew, for the one-line install</li>
         </ul>
@@ -316,12 +317,12 @@
     </div>
 
     <div class="cli-note">
-      <p><strong>No Grok CLI yet?</strong> Install it with xAI's official installer, then sign in:</p>
+      <p><strong>No Homebrew, or prefer xAI's own installer?</strong> Install the Grok CLI with xAI's official installer, then sign in:</p>
       <div class="cmd cmd-sm">
         <code>curl -fsSL https://x.ai/cli/install.sh | bash &amp;&amp; grok login</code>
         <button class="copy" type="button" data-copy="curl -fsSL https://x.ai/cli/install.sh | bash" aria-label="Copy Grok CLI install command">Copy</button>
       </div>
-      <p class="fine">GrokGauge offers the same steps in its dropdown. It never installs anything or signs in on its own.</p>
+      <p class="fine">Having both the Homebrew and installer copies is harmless; they share one login. GrokGauge offers the same steps in its dropdown. It never installs anything or signs in on its own.</p>
     </div>
   </div>
 </section>

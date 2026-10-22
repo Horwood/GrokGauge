@@ -27,6 +27,13 @@
 brew install --cask stevencombs/tap/grokgauge
 ```
 
+This also installs the **Grok CLI** (Homebrew's [`grok-build`](https://formulae.brew.sh/cask/grok-build) cask,
+downloaded from x.ai) if you don't have it yet. Then sign in once:
+
+```sh
+grok login
+```
+
 Already installed? Update to the latest version:
 
 ```sh
@@ -34,8 +41,9 @@ brew update && brew upgrade --cask grokgauge
 ```
 
 This installs **GrokGauge.app** into `/Applications`. Remove it with `brew uninstall --cask grokgauge`
-(add `--zap` to also delete its preferences). No Homebrew? See [Manual](#manual) install. You'll also want the
-[Grok CLI](#requirements) signed in for the Total and Grok rings.
+(add `--zap` to also delete its preferences; the Grok CLI stays installed, remove it with
+`brew uninstall --cask grok-build`). No Homebrew? See [Manual](#manual) install and the
+[Grok CLI](#requirements) requirements.
 
 GrokGauge is ad-hoc signed, not notarized by Apple. So that macOS doesn't block the first launch,
 the cask ([stevencombs/homebrew-tap](https://github.com/stevencombs/homebrew-tap)) removes the
@@ -100,8 +108,8 @@ Features:
 - **Global shortcut** (default **⌃⌥G**) to open the dropdown from anywhere.
 - **What's new from xAI.** The newest few items from xAI's news posts, the API release notes, Grok CLI
   updates, the Grok and Grok Bot iPhone apps, and the Grok Bot app on your Mac, with an unread dot and
-  **Mark all read**. When a newer Grok CLI is out it shows the `grok update` command with a **Copy** button
-  (GrokGauge never runs it). Links to [@xai](https://x.com/xai) and [@grok](https://x.com/grok) on X.
+  **Mark all read**. When a newer Grok CLI is out it shows the update command with a **Copy** button
+  (`brew upgrade --cask grok-build` for Homebrew's copy, `grok update` for the installer's; GrokGauge never runs it). Links to [@xai](https://x.com/xai) and [@grok](https://x.com/grok) on X.
   Optional notifications (off by default): one summary per check.
 - **Open Grok**, **Open Grok Bot** (if installed) and **Open X** (the X app if installed, otherwise x.com) buttons.
 - **Settings window** (gear button or **⌘,**): reorder and hide dropdown sections, menu bar style,
@@ -159,27 +167,36 @@ Features:
 - macOS 14 Sonoma or later
 - A SuperGrok subscription
 - The **Grok CLI** (Grok Build), signed in once. It's needed for the **Total** and **Grok** rings; the
-  **Grok Bot** ring works without it. If you don't have it yet, install it with xAI's official installer:
-
-  ```sh
-  curl -fsSL https://x.ai/cli/install.sh | bash
-  ```
-
-  then sign in:
+  **Grok Bot** ring works without it. The [Homebrew install](#quick-install-homebrew) installs it for you
+  (as the `grok-build` cask). Then sign in:
 
   ```sh
   grok login
   ```
 
-  If Terminal says `grok: command not found` right after installing, open a new Terminal window
-  (the installer adds `~/.grok/bin` to your PATH) or run `~/.grok/bin/grok login`.
+  If Terminal says `grok: command not found`, open a new Terminal window.
+
+  *Alternative (or no Homebrew):* xAI's official installer puts the CLI in `~/.grok/bin`:
+
+  ```sh
+  curl -fsSL https://x.ai/cli/install.sh | bash
+  ```
+
+  If `grok` isn't found right after that, open a new Terminal window or run `~/.grok/bin/grok login`.
+  Having both copies is harmless: they share the same login in `~/.grok`. GrokGauge finds the CLI in
+  `~/.grok/bin`, `/opt/homebrew/bin` or `/usr/local/bin` (and your shell's PATH).
+
+  *Note:* Homebrew's unrelated `grok` **formula** (a regex tool, `brew install grok`) also installs a
+  command named `grok`. If you have it, the Grok CLI cask still installs but can't take the `grok` name;
+  run `brew uninstall grok` and then `brew reinstall --cask grok-build`. GrokGauge ignores the regex tool.
 
   GrokGauge walks you through this too: until the CLI is installed and signed in, the dropdown shows
   **Grok CLI not installed** (with **Copy install command**, **Install in Terminal…** and **Open Terminal**)
   or **Sign in to Grok** (with **Copy “grok login”**). **Install in Terminal…** asks first, then opens
-  Terminal running the installer above; GrokGauge never installs anything or signs in on its own. It
+  Terminal running `brew install --cask grok-build` (or, without Homebrew, xAI's installer above);
+  GrokGauge never installs anything or signs in on its own. It
   notices the new login within a few seconds and switches to your usage, no relaunch needed.
-  Settings › Diagnostics shows the same Grok CLI status.
+  Settings › Diagnostics shows the same Grok CLI status, plus how it was installed and its version.
 
   GrokGauge uses the login the CLI saves in `~/.grok/auth.json` and **renews it automatically**
   the same way the CLI does, so you stay signed in without running `grok login` again. You only
@@ -413,8 +430,10 @@ as `GrokGauge/<version> (macOS menu bar)`. Hosts contacted, only for the sources
 - The first check runs about a minute after launch. Requests time out after 15 s; failures back off
   (5 min, 10, 20 … up to the interval). Conditional requests (`If-None-Match`/`If-Modified-Since`)
   are used where the server supports them.
-- To compare Grok CLI versions GrokGauge **reads** `~/.grok/bin/grok` (the symlink's target name) or
-  `~/.grok/version.json`. It never runs the CLI or `grok update`; it shows the command for you to copy.
+- To compare Grok CLI versions GrokGauge **reads** `~/.grok/bin/grok` (the symlink's target name), else
+  Homebrew's `grok-build` copy (where `/opt/homebrew/bin/grok` or `/usr/local/bin/grok` points, inside
+  `Caskroom/grok-build/<version>/`), else `~/.grok/version.json`. It never runs the CLI, `grok update` or
+  `brew`; it shows the right update command for you to copy.
 - Items and read marks stay in `~/Library/Application Support/GrokGauge/whatsnew.json` (never synced).
 - X isn't read (that needs an account); the section links to the @xai and @grok profiles instead.
 

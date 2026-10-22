@@ -91,7 +91,7 @@ public enum NewsLinks {
     public static let grokProfile = URL(string: "https://x.com/grok")!
     public static let releaseNotesPage = URL(string: "https://docs.x.ai/developers/release-notes")!
     public static let grokBotDownload = URL(string: "https://cursor.com/download/bot")!
-    public static let cliUpdateCommand = "grok update"
+    public static let cliUpdateCommand = GrokCLISetup.cliUpdateCommand
 
     public static func safe(_ s: String?) -> URL? {
         guard let s, var c = URLComponents(string: s.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -297,16 +297,42 @@ public enum GrokCLIVersion {
     /// The installed CLI's version without running it: the `~/.grok/bin/grok` symlink target
     /// (`../downloads/grok-1.0.46-macos-aarch64`), else `version` in `~/.grok/version.json`.
     public static func installed(grokHome: URL = defaultHome) -> String? {
+        installerVersion(grokHome: grokHome) ?? versionJSON(grokHome: grokHome)
+    }
+
+    /// Only the installer's `bin/grok` symlink target.
+    static func installerVersion(grokHome: URL) -> String? {
         let link = grokHome.appendingPathComponent("bin/grok")
-        if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: link.path),
-           let v = version(fromBinaryName: (target as NSString).lastPathComponent) {
-            return v
-        }
+        guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: link.path) else { return nil }
+        return version(fromBinaryName: (target as NSString).lastPathComponent)
+    }
+
+    static func versionJSON(grokHome: URL) -> String? {
         let json = grokHome.appendingPathComponent("version.json")
         guard let data = try? Data(contentsOf: json),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let v = obj["version"] as? String, parsePointer(Data(v.utf8)) != nil else { return nil }
         return v
+    }
+
+    /// The installed CLI and its version, without running it: xAI's installer copy in `grokHome`
+    /// first, then Homebrew's `grok-build` (its `bin/grok` link or the Caskroom), then `version.json`.
+    public static func installedCLI(grokHome: URL = defaultHome,
+                                    homebrewPrefixes: [String] = GrokCLISetup.homebrewPrefixes) -> GrokCLI? {
+        if let v = installerVersion(grokHome: grokHome) {
+            return GrokCLI(path: grokHome.appendingPathComponent("bin/grok").path, kind: .installer, version: v)
+        }
+        for prefix in homebrewPrefixes {
+            let link = "\(prefix)/bin/grok"
+            guard FileManager.default.fileExists(atPath: link) else { continue }
+            let home = grokHome.deletingLastPathComponent().path
+            if let cli = GrokCLISetup.identify(path: link, resolved: GrokCLISetup.resolve(link), home: home),
+               cli.kind == .homebrew, cli.version != nil { return cli }
+        }
+        if let cli = GrokCLISetup.caskroomCLI(prefixes: homebrewPrefixes) { return cli }
+        return versionJSON(grokHome: grokHome).map {
+            GrokCLI(path: grokHome.appendingPathComponent("bin/grok").path, kind: .installer, version: $0)
+        }
     }
 
     /// "grok-1.0.46-macos-aarch64" -> "1.0.46"; "grok-1.1.0-beta.2-macos-x86_64" -> "1.1.0-beta.2".
@@ -323,11 +349,13 @@ public enum GrokCLIVersion {
     }
 
     /// An item only when the published version is newer than the installed one.
-    public static func item(latest: String, installed: String?, published: Date?) -> NewsItem? {
+    /// `updateCommand` is `grok update`, or `brew upgrade --cask grok-build` for Homebrew's copy.
+    public static func item(latest: String, installed: String?, published: Date?,
+                            updateCommand: String = NewsLinks.cliUpdateCommand) -> NewsItem? {
         guard let installed, UpdateCheck.isNewer(latest, than: installed) else { return nil }
         return NewsItem(id: "cli:\(latest)", source: .grokCLI, title: "Grok CLI \(latest) is available",
-                        detail: "You have \(installed). Update in Terminal with `grok update`.",
-                        date: published, command: NewsLinks.cliUpdateCommand)
+                        detail: "You have \(installed). Update in Terminal with `\(updateCommand)`.",
+                        date: published, command: updateCommand)
     }
 }
 

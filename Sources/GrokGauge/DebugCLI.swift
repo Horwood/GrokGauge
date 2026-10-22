@@ -38,10 +38,11 @@ enum DebugCLI {
             let message: String
             switch e {
             case .auth(.notSignedIn):
-                if GrokCLISetup.findCLI(shellPATH: GrokCLISetup.loginShellPATH()) == nil {
-                    message = "Grok CLI not installed. Install it with `\(GrokCLISetup.installCommand)`, then run `\(GrokCLISetup.fallbackLoginCommand)` (or `grok login` in a new Terminal window)."
+                if let cli = GrokCLISetup.locate(shellPATH: GrokCLISetup.loginShellPATH()) {
+                    let alt = cli.kind == .installer ? " (or `\(GrokCLISetup.fallbackLoginCommand)`)" : ""
+                    message = "Not signed in: no usable token in \(AuthStore.authFileURL.path). Run `grok login`\(alt)."
                 } else {
-                    message = "Not signed in: no usable token in \(AuthStore.authFileURL.path). Run `grok login` (or `\(GrokCLISetup.fallbackLoginCommand)`)."
+                    message = "Grok CLI not installed. Install it with `\(GrokCLISetup.brewInstallCommand)` (or xAI's installer: `\(GrokCLISetup.installerCommand)`), then run `grok login` in a new Terminal window."
                 }
             case .auth(.unreadable): message = "Could not read \(AuthStore.authFileURL.path). Run `grok login`."
             case .auth(.expired(let d)): message = "Grok login expired at \(UsageFormat.resetDate(d)) and has no refresh token. Run `grok login` to reconnect."

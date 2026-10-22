@@ -96,16 +96,26 @@ enum Launcher {
         NSWorkspace.shared.openApplication(at: url, configuration: .init()) { _, _ in }
     }
 
-    /// Asks first, then opens Terminal running xAI's official installer. Never runs anything silently,
-    /// never signs in for the user.
+    /// Asks first, then opens Terminal installing the CLI with Homebrew (`grok-build`) or, without
+    /// Homebrew, xAI's official installer. Never runs anything silently, never signs in for the user.
     @MainActor
     static func installCLIInTerminal() {
+        let brew = GrokCLISetup.brewPath()
         let alert = NSAlert()
         alert.messageText = "Install the Grok CLI in Terminal?"
-        alert.informativeText = """
+        alert.informativeText = brew != nil ? """
+            Terminal will open and run:
+
+            \(GrokCLISetup.brewInstallCommand)
+
+            Homebrew downloads the Grok CLI from x.ai. When it's done, run “grok login” to sign in. \
+            GrokGauge picks up the sign-in automatically.
+
+            Prefer xAI's own installer? Copy this instead: \(GrokCLISetup.installerCommand)
+            """ : """
             Terminal will open and run xAI's official installer:
 
-            \(GrokCLISetup.installCommand)
+            \(GrokCLISetup.installerCommand)
 
             It downloads the Grok CLI from x.ai and installs it in ~/.grok. When it's done, run \
             “\(GrokCLISetup.fallbackLoginCommand)” (or “grok login” in a new window) to sign in. \
@@ -118,7 +128,7 @@ enum Launcher {
               let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return }
         let script = FileManager.default.temporaryDirectory.appendingPathComponent("Install Grok CLI.command")
         do {
-            try GrokCLISetup.terminalScript.write(to: script, atomically: true, encoding: .utf8)
+            try GrokCLISetup.terminalScript(brew: brew).write(to: script, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         } catch { return }
         NSWorkspace.shared.open([script], withApplicationAt: terminal, configuration: .init()) { _, _ in }

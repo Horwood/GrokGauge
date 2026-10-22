@@ -1182,10 +1182,17 @@ private struct ProblemCard: View {
                     .padding(.vertical, 3)
                     .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 4))
                     .accessibilityLabel("Install command: \(GrokCLISetup.installCommand)")
+                if GrokCLISetup.installCommand != GrokCLISetup.installerCommand {
+                    Text("Or use xAI's installer: \(GrokCLISetup.installerCommand)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 HStack {
                     Button("Copy install command") { Launcher.copyInstallCommand() }
                     Button("Install in Terminal…") { Launcher.installCLIInTerminal() }
-                        .help("Asks first, then opens Terminal running xAI's installer")
+                        .help("Asks first, then opens Terminal to install the Grok CLI")
                 }
                 .controlSize(.small)
             }

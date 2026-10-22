@@ -130,6 +130,10 @@ private func item(_ id: String, _ src: NewsSource = .news, date: Date? = nil) ->
         #expect(GrokCLIVersion.item(latest: "1.0.46", installed: "1.0.46", published: nil) == nil)
         #expect(GrokCLIVersion.item(latest: "1.0.40", installed: "1.0.46", published: nil) == nil)
         #expect(GrokCLIVersion.item(latest: "1.0.50", installed: nil, published: nil) == nil)
+        let brew = GrokCLIVersion.item(latest: "1.0.67", installed: "1.0.62", published: nil,
+                                       updateCommand: "brew upgrade --cask grok-build")
+        #expect(brew?.command == "brew upgrade --cask grok-build")
+        #expect(brew?.detail == "You have 1.0.62. Update in Terminal with `brew upgrade --cask grok-build`.")
     }
 
     @Test func installedCLIVersionFromSymlinkOrVersionJSON() throws {
@@ -360,7 +364,7 @@ private final class ScriptedHTTP: NewsHTTP, @unchecked Sendable {
         let http = ScriptedHTTP()
         let primary = GrokCLIVersion.pointerURLs[0].absoluteString
         http.replies[primary] = (200, "1.0.50\n", ["ETag": "\"v50\"", "Last-Modified": "Thu, 08 Oct 2026 01:22:57 GMT"])
-        let f = WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: home)
+        let f = WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: home, homebrewPrefixes: [])
         var state = WhatsNewState()
         let r = try await f.fetch(.grokCLI, state: state)
         #expect(r.items?.map { $0.id } == ["cli:1.0.50"])
@@ -381,17 +385,52 @@ private final class ScriptedHTTP: NewsHTTP, @unchecked Sendable {
         let http = ScriptedHTTP()
         http.failing.insert(GrokCLIVersion.pointerURLs[0].absoluteString)
         http.replies[GrokCLIVersion.pointerURLs[1].absoluteString] = (200, "1.0.50", [:])
-        let r = try await WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: home).fetch(.grokCLI, state: WhatsNewState())
+        let r = try await WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: home, homebrewPrefixes: []).fetch(.grokCLI, state: WhatsNewState())
         #expect(r.items == [])
         #expect(r.note == "up to date (1.0.50)")
         #expect(http.requests.count == 2)
+    }
+
+    @Test func homebrewCLISuggestsBrewUpgrade() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("brewcli-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        let prefix = root.appendingPathComponent("homebrew")
+        let cask = prefix.appendingPathComponent("Caskroom/grok-build/1.0.62")
+        try fm.createDirectory(at: cask, withIntermediateDirectories: true)
+        try fm.createDirectory(at: prefix.appendingPathComponent("bin"), withIntermediateDirectories: true)
+        let bin = cask.appendingPathComponent("grok-1.0.62-macos-aarch64")
+        try Data("#!/bin/sh\n".utf8).write(to: bin)
+        try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bin.path)
+        try fm.createSymbolicLink(atPath: prefix.appendingPathComponent("bin/grok").path, withDestinationPath: bin.path)
+        let grokHome = root.appendingPathComponent(".grok")     // no installer copy, no version.json
+
+        let cli = try #require(GrokCLIVersion.installedCLI(grokHome: grokHome, homebrewPrefixes: [prefix.path]))
+        #expect(cli.kind == .homebrew)
+        #expect(cli.version == "1.0.62")
+        #expect(cli.path == prefix.appendingPathComponent("bin/grok").path)
+
+        let http = ScriptedHTTP()
+        http.replies[GrokCLIVersion.pointerURLs[0].absoluteString] = (200, "1.0.67", [:])
+        let r = try await WhatsNewFetcher(appVersion: "0.9.7", http: http, grokHome: grokHome, homebrewPrefixes: [prefix.path])
+            .fetch(.grokCLI, state: WhatsNewState())
+        #expect(r.items?.first?.command == "brew upgrade --cask grok-build")
+        #expect(r.note == "installed 1.0.62, latest 1.0.67")
+
+        // xAI's installer copy, when present, is the one reported (and updated with `grok update`).
+        try fm.createDirectory(at: grokHome.appendingPathComponent("bin"), withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: grokHome.appendingPathComponent("bin/grok").path,
+                                  withDestinationPath: "../downloads/grok-1.0.60-macos-aarch64")
+        let installer = try #require(GrokCLIVersion.installedCLI(grokHome: grokHome, homebrewPrefixes: [prefix.path]))
+        #expect(installer.kind == .installer)
+        #expect(installer.updateCommand == "grok update")
     }
 
     @Test func cliNotInstalledMakesNoRequest() async {
         let http = ScriptedHTTP()
         let empty = FileManager.default.temporaryDirectory.appendingPathComponent("none-\(UUID().uuidString)")
         await #expect(throws: NewsFetchError.notInstalled) {
-            try await WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: empty).fetch(.grokCLI, state: WhatsNewState())
+            try await WhatsNewFetcher(appVersion: "0.9.1", http: http, grokHome: empty, homebrewPrefixes: []).fetch(.grokCLI, state: WhatsNewState())
         }
         #expect(http.requests.isEmpty)
     }
