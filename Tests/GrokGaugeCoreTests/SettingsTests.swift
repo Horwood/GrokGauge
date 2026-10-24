@@ -324,6 +324,19 @@ import Testing
         #expect(!UpdateCheck.isNewer("1.0.0", than: "dev"))
     }
 
+    @Test func fourPartVersions() {
+        // Hotfix releases like 0.9.7.1 sit between 0.9.7 and 0.9.8.
+        #expect(UpdateCheck.isNewer("v0.9.7.1", than: "0.9.7"))
+        #expect(UpdateCheck.isNewer("v0.9.8", than: "0.9.7.1"))
+        #expect(UpdateCheck.isNewer("v0.10.0", than: "0.9.7.1"))
+        #expect(UpdateCheck.isNewer("v1.0", than: "0.9.7.1"))
+        #expect(!UpdateCheck.isNewer("v0.9.7", than: "0.9.7.1"))
+        #expect(!UpdateCheck.isNewer("v0.9.7.1", than: "0.9.7.1"))
+        #expect(!UpdateCheck.isNewer("v0.9.7.0", than: "0.9.7"))
+        #expect(SemVer("v0.9.7.1")?.description == "0.9.7.1")
+        #expect(ReleaseInfo(tag: "v0.9.7.1", url: URL(string: "https://github.com/x")!).version == "0.9.7.1")
+    }
+
     @Test func parsesLatestRelease() {
         let ok = #"{"tag_name":"v0.9.1","html_url":"https://github.com/stevencombs/GrokGauge/releases/tag/v0.9.1","name":"GrokGauge 0.9.1","draft":false,"prerelease":false}"#
         let r = UpdateCheck.parse(Data(ok.utf8))

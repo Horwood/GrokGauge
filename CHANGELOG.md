@@ -5,6 +5,8 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+## [0.9.7.1] - 2026-10-24
+
 ### Changed
 - The "on pace to run out" warning moved out of the 7-day graph (where it was squeezed and cut off) into
   **Resets in**, right under the countdown and in the same style: "At this pace: 100% by Sun, Oct 25", with
@@ -299,7 +301,8 @@ dates are when the version was built.
   launch at login, and Refresh now.
 - `--print-usage`, `--json` and `--render-preview` debug flags.
 
-[Unreleased]: https://github.com/stevencombs/GrokGauge/compare/v0.9.7...HEAD
+[Unreleased]: https://github.com/stevencombs/GrokGauge/compare/v0.9.7.1...HEAD
+[0.9.7.1]: https://github.com/stevencombs/GrokGauge/compare/v0.9.7...v0.9.7.1
 [0.9.7]: https://github.com/stevencombs/GrokGauge/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/stevencombs/GrokGauge/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/stevencombs/GrokGauge/compare/v0.9.4...v0.9.5
