@@ -17,7 +17,7 @@ public enum DropdownSection: String, Codable, CaseIterable, Sendable, Identifiab
         case .grokBotRing: return "Grok Bot ring"
         case .cursorRing: return "Cursor ring"
         case .serviceStatus: return "Service status"
-        case .historyPace: return "History & pace"
+        case .historyPace: return "7-day history"
         case .resetDates: return "Reset dates"
         case .productBreakdown: return "Grok by product"
         case .credits: return "Extra Usage Credits"
@@ -288,7 +288,7 @@ public struct GaugeSettings: Codable, Equatable, Sendable {
     public var sections: [SectionItem]
     public var ringStyle: RingStyle
     public var actions: [ActionItem]
-    /// History graphs (inside the "History & pace" section).
+    /// History graphs (inside the "7-day history" section).
     public var graphStyle: GraphStyle
     public var showGrokHistory: Bool
     public var showGrokBotHistory: Bool

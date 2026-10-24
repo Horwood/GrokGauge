@@ -200,6 +200,36 @@ enum PreviewRenderer {
                             to: dir.appendingPathComponent("popover-status-outage-example.png")) && ok
         }
 
+        if demo {
+            // A heavy week that's on pace to hit 100% before the reset, so the pace warning shows (for review),
+            // at both dropdown widths (four rings: kept size = 416 pt, shrunk = 320 pt), dark and light.
+            let heavy = sampleHeavy
+            let heavyBot = GrokBotSnapshot(percent: heavy.percent + 0.4, nextReset: heavy.periodEnd ?? Date(),
+                                           readAt: Date().addingTimeInterval(-6 * 60), expiresAt: Date().addingTimeInterval(86_400),
+                                           planLabel: "SuperGrok Plus")
+            let heavyStore = UsageStore(notifier: UsageNotifier())
+            heavyStore.showPreview(heavy, bot: heavyBot, botProblem: nil)
+            let heavyShare = BotRingReading.make(bot: heavyBot, pool: heavy, knownSharedEnd: nil).percent ?? 0
+            let heavyHistory = HistoryStore.preview(HistoryStore.demoHistory(grokNow: heavy.percent, botNow: heavyShare, botShared: true))
+            for sizing in RingSizing.allCases {
+                var four = GaugeSettings()
+                four.sections = four.sections.map { item in
+                    var i = item
+                    if i.id == .cursorRing { i.visible = true }
+                    return i
+                }
+                four.ringSizing = sizing
+                let width = sizing == .keepSize ? "416" : "320"
+                for scheme in [ColorScheme.dark, .light] {
+                    let view = PopoverView(store: heavyStore, settingsStore: SettingsStore.preview(four), history: heavyHistory,
+                                           updates: UpdateMonitor.preview(available: nil, lastChecked: nil), whatsNew: whatsNew,
+                                           sizing: PopoverSizing(), status: status)
+                    ok = renderView(view, scheme: scheme, background: true,
+                                    to: dir.appendingPathComponent("popover-pace-warning-\(width)-\(scheme == .dark ? "dark" : "light")-demo.png")) && ok
+                }
+            }
+        }
+
         let g = snapshot.roundedPercent
         // B is the Grok Bot ring's number: its share of the pool when shared, never its whole-pool reading.
         let ring = bot.map { BotRingReading.make(bot: $0, pool: snapshot, knownSharedEnd: nil) }
@@ -244,6 +274,16 @@ enum PreviewRenderer {
             ],
             prepaidBalanceCents: 1_446, onDemandUsedCents: 0, onDemandCapCents: 0,
             fetchedAt: now)
+    }
+
+    /// The demo sample scaled up to 78% after 4.2 days: on pace to hit 100% about a day before the reset.
+    static var sampleHeavy: UsageSnapshot {
+        let s = sample
+        let k = 78.0 / s.percent
+        return UsageSnapshot(
+            percent: 78.0, percentInferred: false, period: .weekly, periodStart: s.periodStart, periodEnd: s.periodEnd,
+            products: s.products.map { ProductShare(key: $0.key, name: $0.name, symbol: $0.symbol, percent: $0.percent * k) },
+            prepaidBalanceCents: s.prepaidBalanceCents, onDemandUsedCents: 0, onDemandCapCents: 0, fetchedAt: s.fetchedAt)
     }
 
     static var sampleBot: GrokBotSnapshot {

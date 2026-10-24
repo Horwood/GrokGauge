@@ -205,6 +205,8 @@ struct PopoverView: View {
             ResetCard(grokEnd: store.snapshot?.periodEnd,
                       botEnd: store.hasGrokBot ? store.botRing?.nextReset : nil,
                       labelLines: store.hasGrokBot,
+                      grokWarning: Pace.warning(PoolPace.total(store, now: now), now: now),
+                      botWarning: Pace.warning(PoolPace.ownBotPool(store, now: now), now: now),
                       now: now)
         case .productBreakdown:
             if let s = store.snapshot { ProductBreakdown(products: settings.productBreakdown.arrange(s.products), level: s.roundedPercent) }
@@ -604,30 +606,24 @@ private struct HistoryPaceCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("LAST 7 DAYS & PACE")
+            Text("LAST 7 DAYS")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             if settings.showGrokHistory {
                 SourceTrend(name: "Total (whole pool)", history: history, source: .grok, current: store.snapshot?.percent,
-                            knownResets: grokResets, pace: grokPace, style: settings.graphStyle, now: now)
+                            knownResets: grokResets, style: settings.graphStyle, now: now)
             }
             if settings.showGrokBotHistory && store.hasGrokBot {
                 SourceTrend(name: store.botShared ? "Grok Bot (share of pool)" : "Grok Bot", history: history, source: .grokBot,
                             current: store.botRing?.percent, currentShared: store.botRing.map(\.isShared),
-                            knownResets: botResets, pace: botPace, style: settings.graphStyle, now: now)
+                            knownResets: botResets, style: settings.graphStyle, now: now)
             }
             if settings.showsCursorHistory {
                 SourceTrend(name: "Cursor (share of pool)", history: history, source: .cursor, current: store.cursorShare?.percent,
-                            knownResets: grokResets, pace: cursorPace, style: settings.graphStyle, now: now)
+                            knownResets: grokResets, style: settings.graphStyle, now: now)
             }
         }
         .card()
-    }
-
-    private var cursorPace: PaceStatus? {
-        guard let s = store.snapshot, let end = s.periodEnd, let c = store.cursorShare else { return nil }
-        return Pace.project(percent: c.percent, periodStart: s.periodStart ?? Pace.weeklyStart(forReset: end),
-                            periodEnd: end, now: now)
     }
 
     private var grokResets: [Date] {
@@ -640,17 +636,21 @@ private struct HistoryPaceCard: View {
         return [Pace.weeklyStart(forReset: end)]
     }
 
-    private var grokPace: PaceStatus? {
+}
+
+/// Which pools can run out. The Total is the whole SuperGrok pool; Grok Bot only counts on its own
+/// when it has a separate pool (its share of a shared pool can't hit 100% before the Total does).
+@MainActor
+private enum PoolPace {
+    static func total(_ store: UsageStore, now: Date) -> PaceStatus? {
         guard let s = store.snapshot, let end = s.periodEnd else { return nil }
         return Pace.project(percent: s.percent, periodStart: s.periodStart ?? Pace.weeklyStart(forReset: end),
                             periodEnd: end, now: now)
     }
 
-    /// Pace for what the Grok Bot ring shows (its share when the pool is shared).
-    private var botPace: PaceStatus? {
-        guard let b = store.botRing, let p = b.percent, let end = b.nextReset else { return nil }
-        let start = b.isShared ? (store.snapshot?.periodStart ?? Pace.weeklyStart(forReset: end)) : Pace.weeklyStart(forReset: end)
-        return Pace.project(percent: p, periodStart: start, periodEnd: end, now: now)
+    static func ownBotPool(_ store: UsageStore, now: Date) -> PaceStatus? {
+        guard store.hasGrokBot, let b = store.botRing, !b.isShared, let p = b.percent, let end = b.nextReset else { return nil }
+        return Pace.project(percent: p, periodStart: Pace.weeklyStart(forReset: end), periodEnd: end, now: now)
     }
 }
 
@@ -662,7 +662,6 @@ private struct SourceTrend: View {
     /// Grok Bot only: whether `current` is its share of the shared pool (matches the recorded samples).
     var currentShared: Bool? = nil
     let knownResets: [Date]
-    let pace: PaceStatus?
     let style: GraphStyle
     let now: Date
     @Environment(\.palette) private var palette
@@ -670,16 +669,7 @@ private struct SourceTrend: View {
     var body: some View {
         let rounded = current.map { Int(max(0, $0).rounded()) }
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(name).font(.caption.weight(.semibold))
-                Spacer(minLength: 6)
-                Text(pace.map { Pace.describe($0) } ?? "Pace: no reading")
-                    .font(.caption2)
-                    .foregroundStyle(paceColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .accessibilityElement(children: .combine)
+            Text(name).font(.caption.weight(.semibold))
             switch style {
             case .bars:
                 let days = history.daily(source, now: now, current: current, currentShared: currentShared, knownResets: knownResets)
@@ -711,14 +701,6 @@ private struct SourceTrend: View {
         Text("Collecting history… (the chart fills in over the week)")
             .font(.caption2)
             .foregroundStyle(.tertiary)
-    }
-
-    private var paceColor: Color {
-        switch pace {
-        case .runsOut?: return palette.color(.warning)
-        case .exhausted?: return palette.color(.critical)
-        default: return .secondary
-        }
     }
 
     private func trendSummary(_ samples: [UsageSample]) -> String {
@@ -887,6 +869,9 @@ private struct ResetCard: View {
     let botEnd: Date?
     /// Label lines with the source name (true whenever Grok Bot is installed).
     let labelLines: Bool
+    /// Shown under the matching reset line, only when that pool is on pace to hit 100% before it resets.
+    var grokWarning: PaceWarning? = nil
+    var botWarning: PaceWarning? = nil
     let now: Date
 
     var body: some View {
@@ -896,17 +881,20 @@ private struct ResetCard: View {
                 .foregroundStyle(.secondary)
             if let g = grokEnd, let b = botEnd, abs(g.timeIntervalSince(b)) < 120 {
                 ResetLine(label: nil, end: g, now: now)
+                if let w = grokWarning ?? botWarning { PaceLine(warning: w, labelColumn: false) }
             } else if grokEnd == nil && botEnd == nil {
                 Text("—").font(.title3.bold()).foregroundStyle(.secondary)
             } else {
                 if let g = grokEnd {
                     ResetLine(label: labelLines ? "Pool" : nil, end: g, now: now)
+                    if let w = grokWarning { PaceLine(warning: w, labelColumn: labelLines) }
                 }
                 if grokEnd != nil && botEnd != nil {
                     Divider()
                 }
                 if let b = botEnd {
                     ResetLine(label: "Grok Bot", end: b, now: now)
+                    if let w = botWarning { PaceLine(warning: w, labelColumn: true) }
                 }
             }
         }
@@ -951,6 +939,58 @@ private struct ResetLine: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label ?? "Usage") resets in \(UsageFormat.countdown(left))")
         .accessibilityValue(UsageFormat.resetDate(end))
+    }
+}
+
+/// "⚠ At this pace   100% by Sun, Oct 25 / in 1 day, 8 hr · about 3 AM EDT", laid out like `ResetLine`
+/// (the right column uses the same fonts as its countdown and date). Wraps rather than truncating.
+private struct PaceLine: View {
+    let warning: PaceWarning
+    /// Indent past the "Pool" / "Grok Bot" label column so it lines up with the reset line above.
+    let labelColumn: Bool
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let color = palette.color(.warning)
+        HStack(alignment: .center, spacing: 8) {
+            if labelColumn { Color.clear.frame(width: 62, height: 1) }
+            Label {
+                Text("At this pace")
+                    .font(.system(.callout, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(color)
+            }
+            .labelStyle(PaceLabelStyle())
+            .fixedSize()
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(warning.headline)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(color)
+                    .monospacedDigit()
+                Text(warning.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .multilineTextAlignment(.trailing)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(warning.sentence)
+        .accessibilityValue(warning.detail)
+    }
+}
+
+private struct PaceLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon
+            configuration.title
+        }
     }
 }
 

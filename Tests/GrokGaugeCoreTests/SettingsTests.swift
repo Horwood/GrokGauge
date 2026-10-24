@@ -225,7 +225,30 @@ import Testing
         let s = Pace.project(percent: 60, periodStart: start, periodEnd: end, now: now)
         guard case .runsOut(let at) = s else { Issue.record("expected runsOut, got \(s)"); return }
         #expect(abs(at.timeIntervalSince(start) - (2 * 86_400 * 100 / 60)) < 1)
-        #expect(Pace.describe(s).hasPrefix("At this pace you'll hit 100% by "))
+        #expect(Pace.describe(s).hasPrefix("At this pace: 100% by "))
+    }
+
+    @Test func warningTextMatchesResetLine() throws {
+        // 60% after 2 days of a week starting Mon, Oct 19, 2026 00:00 EDT: 100% at Thu, Oct 22 08:00 EDT.
+        let tz = try #require(TimeZone(identifier: "America/New_York"))
+        let us = Locale(identifier: "en_US")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        let weekStart = try #require(cal.date(from: DateComponents(year: 2026, month: 10, day: 19)))
+        let weekEnd = weekStart.addingTimeInterval(7 * 86_400)
+        let now = weekStart.addingTimeInterval(2 * 86_400)
+        let status = Pace.project(percent: 60, periodStart: weekStart, periodEnd: weekEnd, now: now)
+        let w = try #require(Pace.warning(status, now: now, timeZone: tz, locale: us))
+        #expect(w.headline == "100% by Thu, Oct 22")
+        // DateFormatter puts a narrow no-break space before "AM".
+        #expect(w.detail.replacingOccurrences(of: "\u{202F}", with: " ") == "in 1 day, 8 hr · about 8 AM EDT")
+        #expect(w.sentence == "At this pace: 100% by Thu, Oct 22")
+        #expect(Pace.describe(status, timeZone: tz, locale: us) == "At this pace: 100% by Thu, Oct 22")
+        // Only when the pace actually runs out before the reset.
+        #expect(Pace.warning(.onTrack(projected: 80)) == nil)
+        #expect(Pace.warning(.tooEarly) == nil)
+        #expect(Pace.warning(.exhausted) == nil)
+        #expect(Pace.warning(nil) == nil)
     }
 
     @Test func edges() {

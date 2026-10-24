@@ -396,8 +396,8 @@ struct OnboardingView: View {
 
     private var historyPace: some View {
         VStack(alignment: .leading, spacing: 12) {
-            para("The **Last 7 days & pace** section graphs each ring over the past week, with each weekly reset marked.")
-            para("Under each graph, a pace line projects where you'll be at the reset. If you're on pace to run out early, it warns you, for example “At this pace you'll hit 100% by Fri 3 PM”.")
+            para("The **Last 7 days** section graphs each ring over the past week, with each weekly reset marked.")
+            para("GrokGauge also projects where you'll be at the reset. If you're on pace to run out early, a warning appears under the countdown in **Resets in**, for example “At this pace: 100% by Fri, Oct 30”.")
             note(paceNow, symbol: "speedometer")
         }
     }
@@ -407,7 +407,7 @@ struct OnboardingView: View {
             return "Pick bars, lines or other graph styles in **Settings › Layout**."
         }
         let status = Pace.project(percent: s.percent, periodStart: s.periodStart ?? Pace.weeklyStart(forReset: end), periodEnd: end)
-        return "Right now, Grok: **\(Pace.describe(status))**."
+        return "Right now, your pool: **\(Pace.describe(status))**."
     }
 
     // 8. Thanks + tip

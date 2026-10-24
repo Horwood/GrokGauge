@@ -5,6 +5,12 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Changed
+- The "on pace to run out" warning moved out of the 7-day graph (where it was squeezed and cut off) into
+  **Resets in**, right under the countdown and in the same style: "At this pace: 100% by Sun, Oct 25", with
+  roughly when ("in 1 day, 8 hr · about 3 AM EDT"). It wraps instead of truncating, shows only when the pool
+  would hit 100% before the reset, and has a warning-colored icon. The graph section is now "Last 7 days".
+
 ## [0.9.7] - 2026-10-22
 
 ### Changed

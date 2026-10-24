@@ -87,12 +87,13 @@ Features:
   An optional fourth **Cursor ring** (off by default) shows Cursor's share of the pool when xAI's
   usage reply lists it; it needs no Cursor sign-in. With three or four rings side by side, keep the rings their
   usual size (the dropdown gets a little wider) or shrink them to fit the usual width.
-- **History & pace.** A 7-day graph for each source: one bar per day with the highest % reached that day
-  (or a line or area graph, your pick), plus a projection: "On track (≈40% at reset)"
-  or "At this pace you'll hit 100% by Fri 3 PM". With a sync folder, the graphs combine readings
+- **7-day history.** A 7-day graph for each source: one bar per day with the highest % reached that day
+  (or a line or area graph, your pick). With a sync folder, the graphs combine readings
   from all your Macs.
 - **Reset times.** Days until reset, a live countdown, and the exact reset day and time in your
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
+  If you're on pace to run out before the reset, a warning appears right under the countdown:
+  "At this pace: 100% by Fri, Oct 30" (with roughly when, e.g. "in 1 day, 8 hr · about 3 PM EDT").
 - **Service status.** Two dots under the rings, one for [xAI](https://status.x.ai) and one for
   [Cursor](https://status.cursor.com) (the home of Grok Bot and Cloud Agents): green "All systems normal",
   orange for degraded, partial outage or maintenance, red for an outage, gray when the check failed. The text
@@ -255,7 +256,7 @@ you through it in 8 short cards:
 5. **In your menu bar.** What the menu bar number shows (a live example in your current style) and where
    to change it.
 6. **Settings & sync.** Colors & Alerts, Layout (including the optional Cursor ring) and the one-folder Sync.
-7. **History & pace.** The 7-day graphs and the "on pace to run out" warning.
+7. **History & pace.** The 7-day graphs and the "on pace to run out" warning under Resets in.
 8. **Enjoying GrokGauge?** An optional tip card: **🙏 Tip on PayPal** opens
    [paypal.me/stevencombs](https://paypal.me/stevencombs), **Maybe later** just closes the tour. No nagging:
    it never asks again.
@@ -281,7 +282,7 @@ Everything applies immediately.
 | <img src="docs/prefs-whatsNew-demo.png" width="400" alt="What's New tab"> | <img src="docs/prefs-diagnostics-demo.png" width="400" alt="Diagnostics tab"> |
 | <img src="docs/prefs-about-demo.png" width="400" alt="About tab"> | |
 
-- **Layout.** Check or uncheck each dropdown section (Total ring, Grok ring, Grok Bot ring, Cursor ring, service status, history & pace,
+- **Layout.** Check or uncheck each dropdown section (Total ring, Grok ring, Grok Bot ring, Cursor ring, service status, 7-day history,
   reset dates, Grok by product, Extra Usage Credits, the Updated/Refresh row, action buttons) and drag
   rows to reorder them (the arrow buttons and VoiceOver actions work too). Under **History graphs**,
   choose whether the Total, Grok Bot and Cursor graphs appear (the Cursor graph only while the Cursor ring is
