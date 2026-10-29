@@ -322,6 +322,7 @@ final class UsageStore: ObservableObject {
     private func updateBotRing() {
         guard let bot = botSnapshot else {
             botRing = nil
+            publishUsageNow()
             return
         }
         let ring = BotRingReading.make(bot: bot, pool: snapshot, knownSharedEnd: knownSharedEnd,
@@ -331,10 +332,18 @@ final class UsageStore: ObservableObject {
             knownSharedEnd = end
             defaults?.set(end.timeIntervalSince1970, forKey: Self.sharedEndKey)
         }
-        guard let p = ring.percent, let rounded = ring.roundedPercent else { return }
-        history?.record(.grokBot, percent: p, at: ring.readAt, shared: ring.isShared)
-        notifier.evaluateBot(rounded: rounded, shared: ring.isShared, periodKey: ring.periodKey, reset: ring.nextReset,
-                             thresholds: settings().effectiveNotificationThresholds)
+        if let p = ring.percent, let rounded = ring.roundedPercent {
+            history?.record(.grokBot, percent: p, at: ring.readAt, shared: ring.isShared)
+            notifier.evaluateBot(rounded: rounded, shared: ring.isShared, periodKey: ring.periodKey, reset: ring.nextReset,
+                                 thresholds: settings().effectiveNotificationThresholds)
+        }
+        publishUsageNow()
+    }
+
+    /// Same numbers the rings just drew, as `usage.json` (and the sync folder's `now/` file).
+    private func publishUsageNow() {
+        let gone = snapshot == nil && (problem?.needsLogin == true || problem == .changedShape)
+        history?.publishUsageNow(pool: snapshot, bot: botRing, grokUnavailable: gone, now: lastAttempt ?? Date())
     }
 
     func refresh() {

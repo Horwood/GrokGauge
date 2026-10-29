@@ -359,9 +359,41 @@ How each part syncs:
   everyone's. Usage is account-wide, so matching readings are combined by taking the highest, never added.
   Conflict copies from Insync or Drive are merged; damaged files are skipped and shown in
   *Settings › Diagnostics*, along with the folder, the number of Macs, the last sync and any write error.
-- The folder choice itself stays on each Mac. With no folder, settings and history stay on the Mac.
+- **Current usage (for widgets):** the live ring split is also written to
+  `GrokGauge/now/<machine-id>.json` in that folder while history sync is on, and always to
+  `~/Library/Application Support/GrokGauge/usage.json` on this Mac. Unlike history, the newest reading wins
+  (a reset makes the true number smaller). See [the file format](#current-usage-file) below.
+- The folder choice itself stays on each Mac. With no folder, settings and history stay on the Mac. The
+  local `usage.json` is still written.
 
 0.9.4 and earlier had separate folder pickers for settings and for usage history; 0.9.5 moves them to the one folder.
+
+## Current usage file
+
+`usage.json` is the live reading, not the 7-day graph. A Shortcut, Übersicht widget, or script can read it
+without talking to xAI. On this Mac:
+
+```
+~/Library/Application Support/GrokGauge/usage.json
+```
+
+With history sync on, each Mac also writes only its own file:
+
+```
+<your sync folder>/GrokGauge/now/<machine-id>.json
+```
+
+Take the file with the newest `updatedAt`. Don't pick the highest percent: after the weekly reset the true
+number is the smaller, later one. `schema` is 1. Dates are seconds since 1970. `grokBotMode` is `shared`
+(the Grok Bot number is its share of the pool) or `separate` (its own allowance). While a shared week is
+known but the share hasn't arrived, `grokBotMode` is `shared` and `grokBot` is omitted — don't substitute
+Grok Bot's own reading, that number is the whole pool. `grokGap` is `unavailable` when the pool reading
+was dropped on purpose (signed out, or a reply that no longer parses). While GrokGauge is still loading,
+it doesn't write a file, so a reader keeps the previous one.
+
+`total`, `grok`, `grokBot` and `cursor` are each `{ percent, rounded, level, readAt }`. `rounded` matches
+the ring. `level` is `normal`, `warning` or `critical`. `equation` is the same sum the Grok ring's tooltip
+shows. `products` is the billing reply's own rows (Chat, Imagine, …), which is not the ring split.
 
 ## Privacy
 
@@ -408,6 +440,11 @@ How each part syncs:
   copy goes to `GrokGauge/history/<machine-id>.json` in that folder, containing only those percents and
   timestamps, an anonymous per-Mac id (a hash, not the hardware UUID itself) and the Mac's name. Never
   tokens, emails, account ids, or anything from `~/.grok`. It's never sent anywhere else.
+- **Current usage** is written to `~/Library/Application Support/GrokGauge/usage.json`, and, with history
+  sync on, to `GrokGauge/now/<machine-id>.json` in the sync folder. Same rule: percents, times, product
+  names, the anonymous Mac id and the Mac's name. No tokens, emails, account ids, dollar balances, or
+  anything from `~/.grok`. GrokGauge doesn't upload it; a widget or another device reads the file locally
+  or through the folder you already sync.
 - **Update check** (optional, daily) asks GitHub's public API for the latest
   [stevencombs/GrokGauge](https://github.com/stevencombs/GrokGauge/releases) release. It's unauthenticated
   and sends no identifiers besides a `GrokGauge/<version>` User-Agent.
@@ -559,7 +596,8 @@ certificate.
 
 ```
 Sources/GrokGaugeCore/   auth.json + token renewal, the billing request, the Grok Bot cache reader,
-                         settings model + sync, colors, pace, history, update check (Foundation only)
+                         settings model + sync, colors, pace, history, the current-usage file,
+                         update check (Foundation only)
 Sources/GrokGauge/       menu bar app (AppKit + SwiftUI), Settings window, notifications, shortcut, debug CLI
 Tests/                   swift-testing unit tests
 scripts/                 build-app.sh, test.sh, assets/make-icon.py

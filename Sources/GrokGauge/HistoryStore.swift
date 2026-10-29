@@ -102,6 +102,49 @@ final class HistoryStore: ObservableObject {
         if sync.isActive { scheduleSync(write: true, after: 3) }
     }
 
+    // MARK: Current usage file (widgets, other devices)
+
+    /// Last document written, so an unchanged reading doesn't rewrite the file (and a cloud folder doesn't churn).
+    private var lastUsageNow: Data?
+    private var lastUsageNowDest: String?
+    private let usageNowQueue = DispatchQueue(label: "GrokGauge.usageNow", qos: .utility)
+
+    /// Writes the ring split `PoolBreakdown` already computed: locally always, and into the sync folder
+    /// (`GrokGauge/now/<this Mac>.json`) while history sync is on. Percents and times only.
+    /// `grokUnavailable` is set once a pool reading has been thrown out, so the file stops claiming it.
+    func publishUsageNow(pool: UsageSnapshot?, bot: BotRingReading?, grokUnavailable: Bool = false, now: Date = Date()) {
+        guard let file = UsageNowFile.make(machineID: machineID, machineName: machineName, pool: pool, bot: bot,
+                                          grokUnavailable: grokUnavailable, now: now) else { return }
+        writeUsageNow(file)
+    }
+
+    private func writeUsageNow(_ file: UsageNowFile) {
+        guard let url else { return }
+        let data: Data
+        do { data = try UsageNowSync.encode(file) } catch { return }
+        let local = url.deletingLastPathComponent().appendingPathComponent(UsageNowSync.localFileName)
+        let synced: URL? = sync.isActive ? primaryFolder.map { UsageNowSync.fileURL(inSyncFolder: $0, machineID: machineID) } : nil
+        let dest = local.path + "|" + (synced?.path ?? "")
+        guard data != lastUsageNow || dest != lastUsageNowDest else { return }
+        lastUsageNow = data
+        lastUsageNowDest = dest
+        usageNowQueue.async { [weak self] in
+            var ok = true
+            do { try UsageNowSync.write(data, to: local) } catch { ok = false }
+            if let synced {
+                do { try UsageNowSync.write(data, to: synced) } catch { ok = false }
+            }
+            guard !ok else { return }
+            Task { @MainActor in
+                // A failed write is retried the next time the numbers are published.
+                if self?.lastUsageNow == data {
+                    self?.lastUsageNow = nil
+                    self?.lastUsageNowDest = nil
+                }
+            }
+        }
+    }
+
     private func recompute(now: Date = Date()) {
         var merged = others.isEmpty || !sync.isActive ? local : HistorySync.merge(local: local, others: others, now: now)
         merged.prune(now: now)
@@ -170,9 +213,20 @@ final class HistoryStore: ObservableObject {
             sync.conflictCopies = []
             sync.lastError = nil
             recompute()
+            flushUsageNow()
             return
         }
         syncNow(write: true)
+        flushUsageNow()
+    }
+
+    /// The sync folder changed (or sync was turned off): write the same reading to the new place.
+    private func flushUsageNow() {
+        guard let data = lastUsageNow else { return }
+        lastUsageNow = nil
+        lastUsageNowDest = nil
+        guard let file = try? UsageNowSync.decode(data) else { return }
+        writeUsageNow(file)
     }
 
     // MARK: Syncing

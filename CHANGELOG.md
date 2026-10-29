@@ -5,6 +5,15 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Added
+- **A current-usage file for widgets and other devices.** Each refresh writes the same split the rings
+  draw (Total, Grok, Grok Bot, Cursor, the sum, and the per-product rows) to
+  `~/Library/Application Support/GrokGauge/usage.json`. With 7-day history sync on, this Mac also writes
+  `GrokGauge/now/<machine-id>.json` in the sync folder — its own file, like history, so sync clients don't
+  have to merge one shared document. A reader takes the file with the newest `updatedAt`, not the highest
+  percent, so a weekly reset isn't hidden by a Mac that still has yesterday's reading. The file is percents
+  and times only: no tokens, dollar balances, emails, or account ids. Schema 1.
+
 ## [0.9.7.1] - 2026-10-24
 
 ### Changed
