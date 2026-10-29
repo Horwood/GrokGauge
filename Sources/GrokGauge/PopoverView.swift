@@ -205,7 +205,7 @@ struct PopoverView: View {
             ResetCard(grokEnd: store.snapshot?.periodEnd,
                       botEnd: store.hasGrokBot ? store.botRing?.nextReset : nil,
                       labelLines: store.hasGrokBot,
-                      grokWarning: Pace.warning(PoolPace.total(store, now: now), now: now),
+                      grokWarning: PoolPace.warning(store, history: history.history, now: now),
                       botWarning: Pace.warning(PoolPace.ownBotPool(store, now: now), now: now),
                       now: now)
         case .productBreakdown:
@@ -642,10 +642,27 @@ private struct HistoryPaceCard: View {
 /// when it has a separate pool (its share of a shared pool can't hit 100% before the Total does).
 @MainActor
 private enum PoolPace {
-    static func total(_ store: UsageStore, now: Date) -> PaceStatus? {
+    struct Total {
+        var status: PaceStatus
+        var cause: String?
+    }
+
+    static func total(_ store: UsageStore, history: UsageHistory, now: Date) -> Total? {
         guard let s = store.snapshot, let end = s.periodEnd else { return nil }
-        return Pace.project(percent: s.percent, periodStart: s.periodStart ?? Pace.weeklyStart(forReset: end),
-                            periodEnd: end, now: now)
+        let start = s.periodStart ?? Pace.weeklyStart(forReset: end)
+        let recent = Burn.recent(history: history, periodStart: start, now: now, current: s.percent)
+        let status = Pace.project(percent: s.percent, periodStart: start, periodEnd: end, now: now, recent: recent)
+        let cause: String?
+        switch status {
+        case .runsOut: cause = recent?.leader
+        default: cause = nil
+        }
+        return Total(status: status, cause: cause)
+    }
+
+    static func warning(_ store: UsageStore, history: UsageHistory, now: Date) -> PaceWarning? {
+        guard let total = total(store, history: history, now: now) else { return nil }
+        return Pace.warning(total.status, cause: total.cause, now: now)
     }
 
     static func ownBotPool(_ store: UsageStore, now: Date) -> PaceStatus? {

@@ -94,6 +94,8 @@ Features:
   time zone. When Grok and Grok Bot reset at different times you get one clearly labeled line for each.
   If you're on pace to run out before the reset, a warning appears right under the countdown:
   "At this pace: 100% by Fri, Oct 30" (with roughly when, e.g. "in 1 day, 8 hr · about 3 PM EDT").
+  The projection uses the last day and a half of history, not the average since Monday, and when one
+  product is most of that climb the line says so ("mostly Grok Bot").
 - **Service status.** Two dots under the rings, one for [xAI](https://status.x.ai) and one for
   [Cursor](https://status.cursor.com) (the home of Grok Bot and Cloud Agents): green "All systems normal",
   orange for degraded, partial outage or maintenance, red for an outage, gray when the check failed. The text

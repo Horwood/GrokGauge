@@ -5,6 +5,13 @@ dates are when the version was built.
 
 ## [Unreleased]
 
+### Changed
+- **The pace warning follows the last day and a half, not the average since the week started.** A heavy
+  Monday no longer keeps saying you'll run out on Thursday after you've already stopped, and a binge that
+  starts late in the week shows up the same day instead of waiting for that average to catch up. When one
+  slice is most of the climb, the line names it ("mostly Grok Bot"). With no history yet, the old
+  projection is unchanged.
+
 ## [0.9.7.1] - 2026-10-24
 
 ### Changed

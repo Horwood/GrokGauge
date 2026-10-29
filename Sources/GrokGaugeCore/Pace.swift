@@ -15,12 +15,20 @@ public enum Pace {
     /// Linear projection from usage since the period started. Waits `minimumElapsed` (12 h) first:
     /// a few busy hours early in the week would otherwise predict running out in a day or two.
     public static func project(percent: Double, periodStart: Date, periodEnd: Date, now: Date = Date(),
-                               minimumElapsed: TimeInterval = 12 * 3600) -> PaceStatus {
+                               minimumElapsed: TimeInterval = 12 * 3600, recent: BurnRate? = nil) -> PaceStatus {
         guard percent.isFinite, periodEnd > periodStart else { return .tooEarly }
         if percent >= 100 { return .exhausted }
         let elapsed = now.timeIntervalSince(periodStart)
         let remaining = periodEnd.timeIntervalSince(now)
         guard remaining > 0 else { return .onTrack(projected: max(0, percent)) }
+        // A measured slope replaces the week average. No slope (no history yet) keeps the old rule,
+        // including the 12-hour wait.
+        if let recent, recent.perSecond.isFinite {
+            if recent.perSecond <= 0 || percent <= 0 { return .onTrack(projected: max(0, percent)) }
+            let projected = percent + recent.perSecond * remaining
+            if projected < 100 { return .onTrack(projected: projected) }
+            return .runsOut(at: now.addingTimeInterval((100 - percent) / recent.perSecond))
+        }
         if percent <= 0 { return elapsed >= minimumElapsed ? .onTrack(projected: 0) : .tooEarly }
         guard elapsed >= minimumElapsed else { return .tooEarly }
         let rate = percent / elapsed                       // percent per second
@@ -46,10 +54,10 @@ public enum Pace {
     }
 
     /// The warning for the Resets in card, only when the pace hits 100% before the reset (nil otherwise).
-    public static func warning(_ status: PaceStatus?, now: Date = Date(), timeZone: TimeZone = .current,
+    public static func warning(_ status: PaceStatus?, cause: String? = nil, now: Date = Date(), timeZone: TimeZone = .current,
                                locale: Locale = .current) -> PaceWarning? {
         guard case .runsOut(let at)? = status else { return nil }
-        return PaceWarning(at: at, now: now, timeZone: timeZone, locale: locale)
+        return PaceWarning(at: at, now: now, timeZone: timeZone, locale: locale, cause: cause)
     }
 }
 
@@ -68,7 +76,8 @@ public struct PaceWarning: Equatable, Sendable {
     /// "At this pace: 100% by Sun, Oct 25" (one line, for VoiceOver and the tour).
     public let sentence: String
 
-    public init(at: Date, now: Date = Date(), timeZone: TimeZone = .current, locale: Locale = .current) {
+    public init(at: Date, now: Date = Date(), timeZone: TimeZone = .current, locale: Locale = .current,
+                cause: String? = nil) {
         self.at = at
         let day = Self.day(at, timeZone: timeZone, locale: locale)
         headline = "100% by \(day)"
@@ -78,6 +87,10 @@ public struct PaceWarning: Equatable, Sendable {
         f.setLocalizedDateFormatFromTemplate("j z")
         detail = "in \(UsageFormat.countdown(at.timeIntervalSince(now))) · about \(f.string(from: at))"
         sentence = "At this pace: \(headline)"
+        if let cause, !cause.isEmpty {
+            detail += " · mostly \(cause)"
+            sentence += ", mostly \(cause)"
+        }
     }
 
     /// "Sun, Oct 25": weekday plus date, so it's never just an ambiguous weekday.
